@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InsightForge AI - Futuristic Data Analytics Platform</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Style -->
+    <link rel="stylesheet" href="css/style.css">
+    <!-- JS CDNs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <!-- Background glowing orbs -->
+    <div class="glow-orb orb-1"></div>
+    <div class="glow-orb orb-2"></div>
+    <div class="glow-orb orb-3"></div>
+
+    <!-- Login Modal overlay -->
+    <div id="login-modal" class="modal-overlay">
+        <div class="glass-card login-card animate-scale">
+            <div class="login-header">
+                <i class="fa-solid fa-cubes logo-icon"></i>
+                <h2>InsightForge AI</h2>
+                <p>Enterprise Decisional Intelligence Console</p>
+            </div>
+            <div class="login-body">
+                <form id="login-form">
+                    <div class="form-group">
+                        <label for="username"><i class="fa-solid fa-user"></i> Username</label>
+                        <input type="text" id="username" placeholder="e.g. admin" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password"><i class="fa-solid fa-lock"></i> Password</label>
+                        <input type="password" id="password" placeholder="e.g. admin123" required>
+                    </div>
+                    <button type="submit" class="glow-btn">Initialize Connection</button>
+                </form>
+                <div class="login-hints">
+                    <p><b>Profile Identity:</b></p>
+                    <p>Admin Console: <code>admin</code> / <code>admin123</code></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Container (Hidden until logged in) -->
+    <div id="app-container" class="app-layout" style="display: none;">
+        
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar-glass">
+            <div class="brand">
+                <i class="fa-solid fa-cubes brand-logo"></i>
+                <div>
+                    <h1>InsightForge AI</h1>
+                    <span>Enterprise 2.0</span>
+                </div>
+            </div>
+
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active" data-tab="dashboard">
+                    <i class="fa-solid fa-chart-line"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-item" data-tab="cleaner">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    <span>Data Cleaning</span>
+                </a>
+                <a href="#" class="nav-item" data-tab="visualizer">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span>Visualizations</span>
+                </a>
+                <a href="#" class="nav-item" data-tab="predictor">
+                    <i class="fa-solid fa-brain"></i>
+                    <span>Predictive AI</span>
+                </a>
+                <a href="#" class="nav-item" data-tab="simulator">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span>What-If Simulator</span>
+                </a>
+                <a href="#" class="nav-item" data-tab="agent-chat">
+                    <i class="fa-solid fa-comments"></i>
+                    <span>Multi-Agent Console</span>
+                </a>
+                <a href="#" class="nav-item" data-tab="admin">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    <span>Security & Audits</span>
+                </a>
+            </nav>
+
+            <div class="user-profile-card">
+                <div class="user-avatar" id="nav-user-avatar">U</div>
+                <div class="user-info">
+                    <h3 id="nav-user-fullname">Guest User</h3>
+                    <span id="nav-user-role">Viewer</span>
+                </div>
+                <button id="logout-btn" title="Logout"><i class="fa-solid fa-power-off"></i></button>
+            </div>
+        </aside>
+
+        <!-- Main Workspace Area -->
+        <main class="main-workspace">
+            
+            <!-- Top Dashboard Bar -->
+            <header class="top-nav-glass">
+                <div class="project-selector">
+                    <label for="active-project-select">Active Project:</label>
+                    <select id="active-project-select">
+                        <option value="">-- Select Project --</option>
+                    </select>
+                    <button id="new-project-btn" class="icon-btn-glow"><i class="fa-solid fa-plus"></i> New</button>
+                </div>
+                <div class="header-right-actions">
+                    <div class="connection-status">
+                        <span class="pulse-dot"></span>
+                        <span id="server-status-label">Quantum Cloud Linked</span>
+                    </div>
+                    <div class="quick-export-menu">
+                        <button class="export-dropdown-btn"><i class="fa-solid fa-download"></i> Export Data <i class="fa-solid fa-chevron-down"></i></button>
+                        <div class="export-dropdown-content">
+                            <a href="#" id="export-excel-btn"><i class="fa-solid fa-file-excel text-green"></i> Excel Spreadsheet</a>
+                            <a href="#" id="export-pptx-btn"><i class="fa-solid fa-file-powerpoint text-orange"></i> PPTX Slides Deck</a>
+                            <a href="#" id="export-pdf-btn"><i class="fa-solid fa-file-pdf text-red"></i> PDF Executive Summary</a>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content Screens (Dynamic) -->
+            <div class="screen-container">
+
+                <!-- 1. DASHBOARD SCREEN -->
+                <section id="screen-dashboard" class="app-screen">
+                    <div class="screen-header">
+                        <h2>Analytical Overview & Data Profiler</h2>
+                        <p>Upload multi-format assets to auto-detect structure, domain context, and baseline indicators.</p>
+                    </div>
+
+                    <!-- Welcome / Upload area if no project selected -->
+                    <div id="no-project-alert" class="glass-card center-alert">
+                        <i class="fa-solid fa-folder-open large-icon"></i>
+                        <h3>No Active Project</h3>
+                        <p>Select an existing workspace from the dropdown above or initialize a new analytical forge.</p>
+                    </div>
+
+                    <div id="project-dashboard-content" style="display: none;">
+                        <!-- Upload and Overview cards -->
+                        <div class="grid-2col">
+                            <div class="glass-card upload-dropzone-card">
+                                <h3>Data Source Ingestion</h3>
+                                <p>Supports CSV, Excel, PDF, Docx, PPTX, SQL, Images, and JSON files.</p>
+                                <div id="dropzone" class="dropzone-area">
+                                    <input type="file" id="file-uploader" style="display: none;">
+                                    <i class="fa-solid fa-cloud-arrow-up cloud-icon"></i>
+                                    <p>Drag files here or <span>click to browse</span></p>
+                                    <span class="file-spec">Supports up to 50MB file size</span>
+                                </div>
+                                <div id="upload-progress-bar-container" class="progress-bar-container" style="display: none;">
+                                    <div id="upload-progress-bar" class="progress-bar"></div>
+                                    <span id="upload-progress-label">Parsing columns...</span>
+                                </div>
+                            </div>
+
+                            <div class="glass-card project-summary-card">
+                                <h3>Forge Diagnostics</h3>
+                                <div class="stats-grid">
+                                    <div class="stat-box">
+                                        <label>Detected Type</label>
+                                        <span id="meta-doc-type">-</span>
+                                    </div>
+                                    <div class="stat-box">
+                                        <label>Business Domain</label>
+                                        <span id="meta-domain">-</span>
+                                    </div>
+                                    <div class="stat-box">
+                                        <label>Total Dimensions</label>
+                                        <span id="meta-columns-count">-</span>
+                                    </div>
+                                    <div class="stat-box">
+                                        <label>Total Records</label>
+                                        <span id="meta-rows-count">-</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="quality-meter-container">
+                                    <div class="quality-label">
+                                        <span>Data Quality Index</span>
+                                        <strong id="meta-quality-score">95.0/100</strong>
+                                    </div>
+                                    <div class="quality-bar-track">
+                                        <div id="meta-quality-bar" class="quality-bar-fill" style="width: 95%;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Data Preview Grid -->
+                        <div class="glass-card table-preview-card margin-top">
+                            <div class="card-header-actions">
+                                <h3>Dataset Preview (Active Version)</h3>
+                                <span class="badge" id="active-dataset-version-badge">Version 1</span>
+                            </div>
+                            <div class="table-scroll-container">
+                                <table id="dataset-preview-table">
+                                    <thead>
+                                        <tr><th>No data uploaded</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr><td>Please upload a CSV/Excel or image to visualize columns.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 2. DATA CLEANING SCREEN -->
+                <section id="screen-cleaner" class="app-screen" style="display: none;">
+                    <div class="screen-header">
+                        <h2>Automated Purify Pipeline</h2>
+                        <p>Configure and trigger AI-powered heuristic cleaners to correct date alignments, impute empty fields, and cap outliers.</p>
+                    </div>
+
+                    <div class="grid-30-70">
+                        <div class="glass-card config-card">
+                            <h3>Pipeline Config</h3>
+                            <form id="cleaning-config-form">
+                                <div class="checkbox-group">
+                                    <label class="switch">
+                                        <input type="checkbox" id="clean-duplicates" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                    <span>Remove Duplicate Rows</span>
+                                </div>
+                                <div class="checkbox-group">
+                                    <label class="switch">
+                                        <input type="checkbox" id="clean-missing" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                    <span>Impute Missing Cells (Median)</span>
+                                </div>
+                                <div class="checkbox-group">
+                                    <label class="switch">
+                                        <input type="checkbox" id="clean-dates" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                    <span>Align Inconsistent Dates</span>
+                                </div>
+                                <div class="checkbox-group">
+                                    <label class="switch">
+                                        <input type="checkbox" id="clean-outliers" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                    <span>Clip Statistical Outliers (IQR)</span>
+                                </div>
+                                <div class="checkbox-group">
+                                    <label class="switch">
+                                        <input type="checkbox" id="clean-units" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                    <span>Standardize Currencies & Units</span>
+                                </div>
+                                <button type="submit" class="glow-btn btn-green margin-top"><i class="fa-solid fa-wand-magic-sparkles"></i> Purify Dataset</button>
+                            </form>
+                        </div>
+
+                        <div class="glass-card report-card">
+                            <h3>Operations Audit Log</h3>
+                            <div id="cleaning-operations-empty" class="placeholder-msg">
+                                <p>No cleaning operations performed yet. Click 'Purify Dataset' to trigger checks.</p>
+                            </div>
+                            <div id="cleaning-operations-results" style="display: none;">
+                                <div class="score-delta-banner">
+                                    <div class="delta-box">
+                                        <label>New Data Quality Score</label>
+                                        <span id="clean-result-score">--</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="cleaning-audit-block">
+                                    <h4>Standardized Elements</h4>
+                                    <ul id="clean-report-standardized"></ul>
+                                </div>
+
+                                <div class="cleaning-audit-block">
+                                    <h4>Imputed Null Entries</h4>
+                                    <ul id="clean-report-imputed"></ul>
+                                </div>
+
+                                <div class="cleaning-audit-block">
+                                    <h4>Clipped Variable Outliers</h4>
+                                    <ul id="clean-report-outliers"></ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 3. VISUALIZATIONS SCREEN -->
+                <section id="screen-visualizer" class="app-screen" style="display: none;">
+                    <div class="screen-header">
+                        <h2>Dynamic Visualizations Matrix</h2>
+                        <p>Evaluate distributions, correlations, and geospatial features with integrated AI explanations.</p>
+                    </div>
+
+                    <!-- Visual Dashboard Grid (3x3 grid) -->
+                    <div class="visuals-grid">
+                        <!-- Chart 1: Bar -->
+                        <div class="glass-card chart-card">
+                            <div class="chart-header">
+                                <h4>1. Volume Distribution (Bar Chart)</h4>
+                                <button class="info-btn" data-chart="bar"><i class="fa-solid fa-brain"></i> Explain</button>
+                            </div>
+                            <div class="chart-canvas-container">
+                                <canvas id="chart-bar"></canvas>
+                            </div>
+                            <div class="ai-insight-panel" id="ai-insight-bar">AI: Visualizes categorical breakdowns and frequency distributions.</div>
+                        </div>
+
+                        <!-- Chart 2: Line -->
+                        <div class="glass-card chart-card">
+                            <div class="chart-header">
+                                <h4>2. Timeline Trends (Line Chart)</h4>
+                                <button class="info-btn" data-chart="line"><i class="fa-solid fa-brain"></i> Explain</button>
+                            </div>
+                            <div class="chart-canvas-container">
+                                <canvas id="chart-line"></canvas>
+                            </div>
+                            <div class="ai-insight-panel" id="ai-insight-line">AI: Tracks changes over time and displays seasonal patterns.</div>
+                        </div>
+
+                        <!-- Chart 3: Pie -->
+                        <div class="glass-card chart-card">
+                            <div class="chart-header">
+                                <h4>3. Market Share (Pie Chart)</h4>
+                                <button class="info-btn" data-chart="pie"><i class="fa-solid fa-brain"></i> Explain</button>
+                            </div>
+                            <div class="chart-canvas-container">
+                                <canvas id="chart-pie"></canvas>
+                            </div>
+                            <div class="ai-insight-panel" id="ai-insight-pie">AI: Represents percentage contribution of elements to a whole.</div>
+                        </div>
+
+                        <!-- Chart 4: Scatter -->
+                        <div class="glass-card chart-card">
+                            <div class="chart-header">
+                                <h4>4. Dependent Relationships (Scatter)</h4>
+                                <button class="info-btn" data-chart="scatter"><i class="fa-solid fa-brain"></i> Explain</button>
+                            </div>
+                            <div class="chart-canvas-container">
+                                <canvas id="chart-scatter"></canvas>
+                            </div>
+                            <div class="ai-insight-panel" id="ai-insight-scatter">AI: Maps relationship clustering between numeric variables.</div>
+                        </div>
+
+                        <!-- Chart 5: Correlation Matrix -->
+                        <div class="glass-card chart-card">
+                            <div class="chart-header">
+                                <h4>5. Correlation Heatmap Grid</h4>
+                                <button class="info-btn" data-chart="correlation"><i class="fa-solid fa-brain"></i> Explain</button>
+                            </div>
+                            <div class="chart-canvas-container">
+                                <div id="correlation-matrix-grid" class="corr-grid-visual">
+                                    <div class="placeholder-msg">Matrix calculations loading...</div>
+                                </div>
+                            </div>
+                            <div class="ai-insight-panel" id="ai-insight-correlation">AI: Indicates dependency weights between variables.</div>
+                        </div>
+
+                        <!-- Chart 6: Histogram -->
+                        <div class="glass-card chart-card">
+                            <div class="chart-header">
+                                <h4>6. Frequency Density (Histogram)</h4>
+                                <button class="info-btn" data-chart="histogram"><i class="fa-solid fa-brain"></i> Explain</button>
+                            </div>
+                            <div class="chart-canvas-container">
+                                <canvas id="chart-histogram"></canvas>
+                            </div>
+                            <div class="ai-insight-panel" id="ai-insight-histogram">AI: Shows numerical density groupings and skewness.</div>
+                        </div>
+
+                        <!-- Chart 7: Boxplot -->
+                        <div class="glass-card chart-card">
+                            <div class="chart-header">
+                                <h4>7. Statistical Dispersion (Boxplot)</h4>
+                                <button class="info-btn" data-chart="boxplot"><i class="fa-solid fa-brain"></i> Explain</button>
+                            </div>
+                            <div class="chart-canvas-container">
+                                <canvas id="chart-boxplot"></canvas>
+                            </div>
+                            <div class="ai-insight-panel" id="ai-insight-boxplot">AI: Evaluates quartiles, medians, and distribution spreads.</div>
+                        </div>
+
+                        <!-- Chart 8: Heatmap -->
+                        <div class="glass-card chart-card">
+                            <div class="chart-header">
+                                <h4>8. Heatmap Density</h4>
+                                <button class="info-btn" data-chart="heatmap"><i class="fa-solid fa-brain"></i> Explain</button>
+                            </div>
+                            <div class="chart-canvas-container">
+                                <canvas id="chart-heatmap"></canvas>
+                            </div>
+                            <div class="ai-insight-panel" id="ai-insight-heatmap">AI: Highlights dense transaction overlaps.</div>
+                        </div>
+
+                        <!-- Chart 9: Geographic -->
+                        <div class="glass-card chart-card">
+                            <div class="chart-header">
+                                <h4>9. Geospatial Scatter (Geographic Map)</h4>
+                                <button class="info-btn" data-chart="map"><i class="fa-solid fa-brain"></i> Explain</button>
+                            </div>
+                            <div class="chart-canvas-container">
+                                <div id="map-mock-container" class="map-mock-visual">
+                                    <div class="map-dot" style="top: 40%; left: 30%;" title="Silicon Valley"></div>
+                                    <div class="map-dot" style="top: 35%; left: 75%;" title="Neo Tokyo"></div>
+                                    <div class="map-dot" style="top: 60%; left: 45%;" title="Cyber Port"></div>
+                                </div>
+                            </div>
+                            <div class="ai-insight-panel" id="ai-insight-map">AI: Tracks distribution clusters across global node hubs.</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 4. PREDICTIVE AI SCREEN -->
+                <section id="screen-predictor" class="app-screen" style="display: none;">
+                    <div class="screen-header">
+                        <h2>Machine Learning Engine & XAI</h2>
+                        <p>Train advanced regressors, classifiers, and neural time-series forecasters. Inspect local explanations with SHAP.</p>
+                    </div>
+
+                    <div class="grid-2col">
+                        <!-- Model Training Setup -->
+                        <div class="glass-card">
+                            <h3>Model Architect</h3>
+                            <div class="form-group">
+                                <label for="ml-target-col">Select Target Variable (Y):</label>
+                                <select id="ml-target-col" class="custom-select"></select>
+                            </div>
+                            <div class="form-group">
+                                <label>Select Feature Variables (X):</label>
+                                <div id="ml-features-container" class="checkbox-select-list"></div>
+                            </div>
+                            <div class="form-group">
+                                <label for="ml-model-type">Select Algorithm Model:</label>
+                                <select id="ml-model-type" class="custom-select">
+                                    <option value="Random Forest">Random Forest</option>
+                                    <option value="XGBoost">XGBoost (Gradient Boosting)</option>
+                                    <option value="Linear Regression">Linear Regression</option>
+                                </select>
+                            </div>
+                            <button id="train-ml-btn" class="glow-btn btn-purple"><i class="fa-solid fa-gear"></i> Fit Predictive Model</button>
+                        </div>
+
+                        <!-- Time-Series Forecasting -->
+                        <div class="glass-card">
+                            <h3>Timeline Forecasting</h3>
+                            <div class="form-group">
+                                <label for="ts-date-col">Select Date Variable (Index):</label>
+                                <select id="ts-date-col" class="custom-select"></select>
+                            </div>
+                            <div class="form-group">
+                                <label for="ts-value-col">Select Forecasting Target (Value):</label>
+                                <select id="ts-value-col" class="custom-select"></select>
+                            </div>
+                            <div class="form-group">
+                                <label for="ts-forecast-steps">Steps to Forecast:</label>
+                                <input type="number" id="ts-forecast-steps" class="custom-input" value="12" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label for="ts-method">Forecasting Algorithm:</label>
+                                <select id="ts-method" class="custom-select">
+                                    <option value="LSTM">LSTM Recurrent Network</option>
+                                    <option value="Prophet">Prophet Model (Holt-Winters)</option>
+                                </select>
+                            </div>
+                            <button id="forecast-ts-btn" class="glow-btn btn-blue"><i class="fa-solid fa-clock"></i> Run Time Series Forecast</button>
+                        </div>
+                    </div>
+
+                    <!-- Predictions and SHAP Explanations -->
+                    <div id="ml-results-block" class="margin-top" style="display: none;">
+                        <div class="grid-2col">
+                            <!-- Model Metrics -->
+                            <div class="glass-card">
+                                <h3>Model Performance Indicators</h3>
+                                <div class="stats-grid">
+                                    <div class="stat-box">
+                                        <label>Model Confidence</label>
+                                        <span id="ml-res-confidence">--</span>
+                                    </div>
+                                    <div class="stat-box">
+                                        <label>Evaluation metric</label>
+                                        <span id="ml-res-metric-name">R-squared</span>
+                                    </div>
+                                    <div class="stat-box">
+                                        <label>Metric Value</label>
+                                        <span id="ml-res-metric-val">--</span>
+                                    </div>
+                                </div>
+                                <div class="chart-canvas-container margin-top">
+                                    <canvas id="chart-ml-predictions"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- SHAP Explainer -->
+                            <div class="glass-card">
+                                <h3>Explainable AI (SHAP Shapley Values)</h3>
+                                <p>Shows how much each feature pushes the target prediction value relative to baseline.</p>
+                                <div class="shap-plot-container" id="shap-bars-container">
+                                    <!-- Dynamic SHAP bars will go here -->
+                                    <div class="placeholder-msg">Run model fit to evaluate SHAP shapley values.</div>
+                                </div>
+                                <div class="shap-legend">
+                                    <span class="legend-pos"><span class="block"></span> Positive Effect</span>
+                                    <span class="legend-neg"><span class="block"></span> Negative Effect</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Time Series Plot -->
+                    <div id="ts-results-block" class="glass-card margin-top" style="display: none;">
+                        <h3>LSTM / Prophet Timeline Forecast</h3>
+                        <div class="chart-canvas-container-wide">
+                            <canvas id="chart-ts-forecast"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 5. WHAT-IF SIMULATOR SCREEN -->
+                <section id="screen-simulator" class="app-screen" style="display: none;">
+                    <div class="screen-header">
+                        <h2>Scenario Sandbox & Simulator</h2>
+                        <p>Adjust operational parameters to evaluate elasticities and predict simulated outcomes on business variables.</p>
+                    </div>
+
+                    <div class="grid-30-70">
+                        <!-- Sliders Controls -->
+                        <div class="glass-card">
+                            <h3>Adjust Variables</h3>
+                            <div class="form-group">
+                                <label for="sim-target-select">Simulator Target Column:</label>
+                                <select id="sim-target-select" class="custom-select"></select>
+                            </div>
+                            
+                            <div class="slider-group">
+                                <div class="slider-label">
+                                    <span>Pricing Adjustment</span>
+                                    <strong id="label-val-price">0%</strong>
+                                </div>
+                                <input type="range" id="sim-val-price" min="-30" max="50" value="0">
+                            </div>
+
+                            <div class="slider-group">
+                                <div class="slider-label">
+                                    <span>Marketing Budget</span>
+                                    <strong id="label-val-marketing">0%</strong>
+                                </div>
+                                <input type="range" id="sim-val-marketing" min="-50" max="200" value="0">
+                            </div>
+
+                            <div class="slider-group">
+                                <div class="slider-label">
+                                    <span>Staffing Levels</span>
+                                    <strong id="label-val-staffing">0%</strong>
+                                </div>
+                                <input type="range" id="sim-val-staffing" min="-20" max="50" value="0">
+                            </div>
+
+                            <div class="slider-group">
+                                <div class="slider-label">
+                                    <span>Inventory Targets</span>
+                                    <strong id="label-val-inventory">0%</strong>
+                                </div>
+                                <input type="range" id="sim-val-inventory" min="-40" max="100" value="0">
+                            </div>
+
+                            <div class="slider-group">
+                                <div class="slider-label">
+                                    <span>Demand Trend</span>
+                                    <strong id="label-val-demand">0%</strong>
+                                </div>
+                                <input type="range" id="sim-val-demand" min="-30" max="50" value="0">
+                            </div>
+                        </div>
+
+                        <!-- Results Dashboard -->
+                        <div class="glass-card">
+                            <h3>Outcome Analytics</h3>
+                            <div class="stats-grid">
+                                <div class="stat-box">
+                                    <label>Baseline Value</label>
+                                    <span id="sim-base-val">$0.00</span>
+                                </div>
+                                <div class="stat-box">
+                                    <label>Projected Value</label>
+                                    <span id="sim-projected-val">$0.00</span>
+                                </div>
+                                <div class="stat-box">
+                                    <label>Delta shift</label>
+                                    <span id="sim-delta-pct" class="text-green">0.00%</span>
+                                </div>
+                            </div>
+                            
+                            <div class="grid-2col margin-top">
+                                <div class="chart-canvas-container">
+                                    <canvas id="chart-simulator"></canvas>
+                                </div>
+                                <div class="glass-card inner-advisory-card">
+                                    <div class="advisory-header text-orange">
+                                        <i class="fa-solid fa-shield-halved"></i>
+                                        <h4>AI Business Consultant</h4>
+                                    </div>
+                                    <div class="advisory-body" id="sim-consultant-remarks">
+                                        <p>Adjust variables in the sidebar sandbox. The AI agent will calculate threat metrics and advise on resource allocations.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 6. MULTI-AGENT CHAT SCREEN -->
+                <section id="screen-agent-chat" class="app-screen" style="display: none;">
+                    <div class="screen-header">
+                        <h2>Multi-Agent AI Workspace</h2>
+                        <p>Interact with our cooperative agents to parse documents, clean databases, train models, and generate briefings.</p>
+                    </div>
+
+                    <div class="grid-25-75 chat-layout-container">
+                        <!-- Agent roster -->
+                        <div class="glass-card agent-roster-card">
+                            <h3>Active Agents</h3>
+                            <div class="agent-list" id="chat-agent-list">
+                                <!-- Agents will be injected here -->
+                            </div>
+                        </div>
+
+                        <!-- Chat thread -->
+                        <div class="glass-card chat-thread-card">
+                            <div class="chat-thread-header">
+                                <div class="active-agent-banner">
+                                    <span class="agent-indicator-dot" id="active-agent-dot" style="background: #00d2ff;"></span>
+                                    <div>
+                                        <h4 id="active-agent-name">DocuExtract AI</h4>
+                                        <span id="active-agent-role">Document Processing Expert</span>
+                                    </div>
+                                </div>
+                                <span class="badge">Multi-Agent Protocol Active</span>
+                            </div>
+
+                            <div class="chat-messages-container" id="chat-messages">
+                                <!-- Messages -->
+                                <div class="chat-bubble agent-msg">
+                                    <div class="bubble-header">
+                                        <strong style="color: #00d2ff;">DocuExtract AI</strong>
+                                        <span>Just now</span>
+                                    </div>
+                                    <div class="bubble-body">
+                                        Welcome to the InsightForge Forge Console. Please load a project dataset or select an active worksheet to let us begin structure mapping!
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Suggested Prompts -->
+                            <div class="chat-suggestions-wrapper">
+                                <div class="suggestions-label">Suggestions:</div>
+                                <div class="suggestions-container" id="chat-suggestions">
+                                    <button class="suggestion-pill">Explain raw parsed text</button>
+                                    <button class="suggestion-pill">Show dataset columns</button>
+                                </div>
+                            </div>
+
+                            <!-- Input zone -->
+                            <div class="chat-input-zone">
+                                <input type="text" id="chat-user-input" placeholder="Query the active agents (e.g. 'Standardize currencies and train Random Forest model')...">
+                                <button id="chat-send-btn" class="glow-btn btn-blue"><i class="fa-solid fa-paper-plane"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 7. SECURITY & AUDITS SCREEN -->
+                <section id="screen-admin" class="app-screen" style="display: none;">
+                    <div class="screen-header">
+                        <h2>Governance, Security & Audit Logs</h2>
+                        <p>Configure Role-Based Access Controls (RBAC), view system transaction audit logs, and fetch endpoints API integration keys.</p>
+                    </div>
+
+                    <div class="grid-2col">
+                        <!-- RBAC info & API keys -->
+                        <div class="glass-card">
+                            <h3>Role-Based Access & API Integrations</h3>
+                            <div class="rbac-profile-block">
+                                <div class="rbac-item">
+                                    <label>Active User Identity:</label>
+                                    <strong id="rbac-val-user">admin</strong>
+                                </div>
+                                <div class="rbac-item">
+                                    <label>Privilege Level:</label>
+                                    <span class="badge badge-red" id="rbac-val-role">Admin</span>
+                                </div>
+                            </div>
+                            
+                            <h4 class="margin-top">Enterprise API Access Key</h4>
+                            <div class="api-key-block">
+                                <input type="text" id="api-key-field" value="if_admin_live_key_9901" readonly class="custom-input key-field">
+                                <button id="api-key-copy-btn" class="icon-btn-glow"><i class="fa-solid fa-copy"></i> Copy</button>
+                            </div>
+                            <p class="micro-text text-gray">Authentication header requires: <code>Authorization: Bearer [API_KEY]</code></p>
+
+                            <h4 class="margin-top">REST Integration Endpoint Specs</h4>
+                            <ul class="endpoint-specs">
+                                <li><code>POST /api/projects/{id}/upload</code> <span class="badge badge-blue">Upload</span></li>
+                                <li><code>POST /api/projects/{id}/clean</code> <span class="badge badge-green">Clean</span></li>
+                                <li><code>POST /api/projects/{id}/train</code> <span class="badge badge-purple">Fit ML</span></li>
+                                <li><code>POST /api/projects/{id}/simulate</code> <span class="badge badge-orange">Simulate</span></li>
+                            </ul>
+                        </div>
+
+                        <!-- System Audit Logs -->
+                        <div class="glass-card">
+                            <h3>System Operation Audit Trail</h3>
+                            <p>Detailed history of user logins, uploads, cleaning runs, and model fits.</p>
+                            <div class="audit-log-scroller">
+                                <ul class="audit-log-list" id="audit-log-items-list">
+                                    <!-- Logs -->
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- New Project Modal -->
+    <div id="new-project-modal" class="modal-overlay" style="display: none;">
+        <div class="glass-card login-card">
+            <h3>Initialize New Analytical Forge</h3>
+            <form id="new-project-form">
+                <div class="form-group">
+                    <label for="new-project-name">Project Name</label>
+                    <input type="text" id="new-project-name" placeholder="e.g. Sales Optimization Q3" required>
+                </div>
+                <div class="form-group">
+                    <label for="new-project-desc">Description</label>
+                    <input type="text" id="new-project-desc" placeholder="e.g. Customer churn and linear forecasts on retail data" required>
+                </div>
+                <div class="form-actions-row">
+                    <button type="button" id="new-project-cancel-btn" class="glow-btn btn-gray">Cancel</button>
+                    <button type="submit" class="glow-btn">Forge Project</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Chart Zoom & AI Insight Explainer Modal -->
+    <div id="chart-zoom-modal" class="modal-overlay" style="display: none;">
+        <div class="glass-card animate-scale" style="width: 800px; max-width: 95vw; max-height: 90vh; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; z-index: 101;">
+            <div class="card-header-actions" style="margin-bottom: 0;">
+                <h3 id="zoom-modal-title" style="font-family: var(--font-heading); font-size: 20px; font-weight: 700;">Chart Details</h3>
+                <button id="zoom-modal-close-btn" class="icon-btn-glow" style="padding: 6px 12px;"><i class="fa-solid fa-xmark"></i> Close</button>
+            </div>
+            <div id="zoom-modal-chart-container" style="flex-grow: 1; min-height: 380px; display: flex; align-items: center; justify-content: center; position: relative;">
+                <!-- Canvas or Cloned Grid will be inserted here dynamically -->
+            </div>
+            <div class="ai-insight-panel" id="zoom-modal-insight" style="font-size: 13.5px; line-height: 1.6; padding: 14px 18px; margin-top: 8px;">
+                AI Insight will display here...
+            </div>
+        </div>
+    </div>
+
+    <!-- Main scripts link -->
+    <script src="js/auth.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/simulator.js"></script>
+    <script src="js/chat.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

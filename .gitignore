@@ -1,0 +1,19 @@
+# Byte-compiled / optimized files
+__pycache__/
+*.pyc
+
+# Local database and datasets
+.insightforge_db/
+
+# Logs and scratch files
+server.log
+scratch/
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE files
+.idea/
+.vscode/
