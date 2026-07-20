@@ -3,11 +3,9 @@ uvicorn
 pandas
 numpy
 scikit-learn
-statsmodels
 python-multipart
 openpyxl
 python-docx
 python-pptx
 reportlab
-matplotlib
 jinja2

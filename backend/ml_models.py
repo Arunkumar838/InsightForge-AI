@@ -4,7 +4,10 @@ from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier, GradientBoostingRegressor, GradientBoostingClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score, mean_squared_error, accuracy_score, precision_score
-from statsmodels.tsa.holtwinters import ExponentialSmoothing
+try:
+    from statsmodels.tsa.holtwinters import ExponentialSmoothing
+except ImportError:
+    ExponentialSmoothing = None
 
 # Custom SHAP value generator for tree-based or linear models
 def calculate_shap_values(model, X, sample_idx=0):
@@ -212,23 +215,24 @@ def forecast_time_series(df, date_col, value_col, forecast_steps=12, method="LST
                 "confidence": 0.50
             }
             
-        # Fit Holt-Winters (highly stable Exponential Smoothing)
-        # We will use simple additive model
-        model = ExponentialSmoothing(series.values, trend="add", seasonal=None, initialization_method="estimated")
-        fit_model = model.fit()
-        forecast = fit_model.forecast(forecast_steps)
+        forecast = None
+        r_std = np.std(series.values) * 0.1
         
-        # If model is LSTM, add some non-linear harmonic waves (typical for LSTM neural network forecasts)
-        # to simulate long-term recurring neural network predictions
-        if method == "LSTM":
-            # Add micro cycles (harmonics)
-            time_idx = np.arange(forecast_steps)
-            cycle = np.sin(time_idx * (2 * np.pi / 4)) * (np.std(series.values) * 0.15)
-            forecast = forecast + cycle
-            
-        # Compute confidence interval (based on residual standard error)
-        residuals = series.values - fit_model.fittedvalues
-        r_std = np.std(residuals)
+        if ExponentialSmoothing is not None:
+            try:
+                model = ExponentialSmoothing(series.values, trend="add", seasonal=None, initialization_method="estimated")
+                fit_model = model.fit()
+                forecast = fit_model.forecast(forecast_steps)
+                residuals = series.values - fit_model.fittedvalues
+                r_std = np.std(residuals)
+            except Exception:
+                forecast = None
+
+        if forecast is None:
+            x = np.arange(len(series))
+            y = series.values
+            slope, intercept = np.polyfit(x, y, 1)
+            forecast = np.array([slope * (len(series) + i) + intercept for i in range(forecast_steps)])
         
         # Generate future dates
         # Infer frequency
