@@ -517,8 +517,11 @@ def get_logs():
     return get_audit_logs()
 
 # Serve static app
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+
 @app.get("/")
 def get_index():
-    return FileResponse("static/index.html")
+    return FileResponse(os.path.join(STATIC_DIR, "index.html"))
 
-app.mount("/", StaticFiles(directory="static"), name="static")
+app.mount("/", StaticFiles(directory=STATIC_DIR), name="static")

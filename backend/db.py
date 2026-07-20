@@ -5,7 +5,15 @@ import uuid
 import threading
 import shutil
 
-DB_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".insightforge_db")
+import tempfile
+
+IS_VERCEL = os.environ.get("VERCEL") == "1" or os.environ.get("VERCEL_ENV") is not None
+
+if IS_VERCEL:
+    DB_DIR = os.path.join(tempfile.gettempdir(), ".insightforge_db")
+else:
+    DB_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".insightforge_db")
+
 USERS_FILE = os.path.join(DB_DIR, "users.json")
 PROJECTS_FILE = os.path.join(DB_DIR, "projects.json")
 AUDIT_LOGS_FILE = os.path.join(DB_DIR, "audit_logs.json")
