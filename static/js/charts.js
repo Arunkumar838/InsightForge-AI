@@ -17,33 +17,31 @@ const Charts = {
     getColumnsProfile(data) {
         if (!data || data.length === 0) return { numeric: [], categorical: [], date: [] };
         
-        const first = data[0];
+        const cols = Object.keys(data[0]);
         const numeric = [];
         const categorical = [];
         const date = [];
 
-        Object.keys(first).forEach(col => {
-            const val = first[col];
-            // Check if column name suggests date
-            if (col.toLowerCase().includes("date") || col.toLowerCase().includes("time") || col.toLowerCase().includes("timestamp")) {
+        cols.forEach(col => {
+            const lowerCol = col.toLowerCase();
+            let sampleVal = null;
+            
+            // Search for first non-null sample value across top 15 rows
+            for (let i = 0; i < Math.min(data.length, 15); i++) {
+                if (data[i][col] !== null && data[i][col] !== undefined && String(data[i][col]).trim() !== "") {
+                    sampleVal = data[i][col];
+                    break;
+                }
+            }
+
+            if (lowerCol.includes("date") || lowerCol.includes("time") || lowerCol.includes("timestamp")) {
                 date.push(col);
-            } else if (typeof val === 'number') {
+            } else if (sampleVal !== null && (typeof sampleVal === 'number' || (typeof sampleVal === 'string' && !isNaN(Number(sampleVal))))) {
                 numeric.push(col);
-            } else if (val !== null && val !== undefined) {
+            } else {
                 categorical.push(col);
             }
         });
-
-        // Fallback checks
-        if (date.length === 0 && categorical.length > 0) {
-            // Check if any categorical looks like date
-            const dateRegex = /^\d{4}-\d{2}-\d{2}/;
-            const sample = data[0][categorical[0]];
-            if (sample && dateRegex.test(String(sample))) {
-                date.push(categorical[0]);
-                categorical.shift();
-            }
-        }
 
         return { numeric, categorical, date };
     },

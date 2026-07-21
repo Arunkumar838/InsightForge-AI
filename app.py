@@ -143,6 +143,10 @@ async def upload_document(
         if df is None or df.empty:
             raise Exception("No readable tabular structure extracted from document.")
             
+        # Sample dataset if it has over 3,000 rows to ensure fast AI prediction and lightweight Vercel payload
+        if len(df) > 3000:
+            df = df.head(3000).copy()
+
         # Convert df to JSON serializable list
         dataset_json = df.to_dict(orient="records")
         

@@ -274,6 +274,12 @@ const App = {
             opt.innerText = col;
             targetSelect.appendChild(opt);
         });
+        if (this.numericCols.length === 0) {
+            const opt = document.createElement("option");
+            opt.value = "";
+            opt.innerText = "-- Upload a dataset first --";
+            targetSelect.appendChild(opt);
+        }
 
         // Features list checkboxes
         const featCont = document.getElementById("ml-features-container");
@@ -286,11 +292,13 @@ const App = {
             label.innerHTML = `<input type="checkbox" name="ml-feature" value="${col}" checked> ${col}`;
             featCont.appendChild(label);
         });
+        if (allFeats.length === 0) {
+            featCont.innerHTML = "<p class='micro-text text-gray' style='padding: 6px;'>No dataset columns found. Please upload a dataset in the Dashboard tab first.</p>";
+        }
 
         // Time series selects
         const dateSelect = document.getElementById("ts-date-col");
         dateSelect.innerHTML = "";
-        // Prioritize date type columns, fallback to categorical
         const allDateOptions = [...this.dateCols, ...this.categoricalCols];
         allDateOptions.forEach(col => {
             const opt = document.createElement("option");
@@ -298,6 +306,12 @@ const App = {
             opt.innerText = col;
             dateSelect.appendChild(opt);
         });
+        if (allDateOptions.length === 0) {
+            const opt = document.createElement("option");
+            opt.value = "";
+            opt.innerText = "-- Upload a dataset first --";
+            dateSelect.appendChild(opt);
+        }
 
         const valSelect = document.getElementById("ts-value-col");
         valSelect.innerHTML = "";
@@ -307,6 +321,12 @@ const App = {
             opt.innerText = col;
             valSelect.appendChild(opt);
         });
+        if (this.numericCols.length === 0) {
+            const opt = document.createElement("option");
+            opt.value = "";
+            opt.innerText = "-- Upload a dataset first --";
+            valSelect.appendChild(opt);
+        }
     },
 
     async uploadFile(file) {
@@ -337,8 +357,19 @@ const App = {
             progressLabel.innerText = "Assembling virtual columns...";
 
             if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.detail || "Parse Failed");
+                let errDetail = "Parse Failed";
+                try {
+                    const err = await response.json();
+                    errDetail = err.detail || errDetail;
+                } catch (jsonErr) {
+                    if (response.status === 413) {
+                        errDetail = "File exceeds serverless upload limit (4.5MB). Please upload a smaller CSV/Excel sample under 4.5MB.";
+                    } else {
+                        const text = await response.text();
+                        errDetail = text ? text.substring(0, 120) : `HTTP ${response.status} Error`;
+                    }
+                }
+                throw new Error(errDetail);
             }
 
             const res = await response.json();
@@ -446,6 +477,11 @@ const App = {
         const target = targetSelect.value;
         const modelType = modelSelect.value;
 
+        if (!target) {
+            alert("No target variable selected. Please upload a dataset in the Dashboard tab first.");
+            return;
+        }
+
         // Get checked features
         const featureCheckboxes = document.querySelectorAll("input[name='ml-feature']:checked");
         const features = Array.from(featureCheckboxes).map(cb => cb.value).filter(val => val !== target);
@@ -548,6 +584,11 @@ const App = {
         const valSelect = document.getElementById("ts-value-col");
         const stepsInput = document.getElementById("ts-forecast-steps");
         const methodSelect = document.getElementById("ts-method");
+
+        if (!dateSelect.value || !valSelect.value) {
+            alert("Please select both a date variable and a target value column to run time-series forecasting. Upload a dataset first if empty.");
+            return;
+        }
 
         const payload = {
             date_col: dateSelect.value,
