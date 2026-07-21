@@ -483,18 +483,29 @@ const App = {
                     });
                 }
             } else {
-                // Fallback to FormData upload for images, PDFs, Word docs
-                progressBar.style.width = "40%";
-                progressLabel.innerText = "Transmitting document payload...";
-
-                const formData = new FormData();
-                formData.append("file", file);
-                formData.append("username", username);
-
-                response = await fetch(`/api/projects/${this.activeProjectId}/upload`, {
-                    method: "POST",
-                    body: formData
-                });
+                // Fallback to chunked FormData upload for images, PDFs, Word docs, JSON etc.
+                progressBar.style.width = "10%";
+                progressLabel.innerText = "Transmitting raw file in chunks...";
+                
+                const chunkSize = 3.5 * 1024 * 1024; // 3.5MB max per chunk
+                const totalChunks = Math.ceil(file.size / chunkSize);
+                
+                for (let i = 0; i < totalChunks; i++) {
+                    const chunk = file.slice(i * chunkSize, (i + 1) * chunkSize);
+                    const formData = new FormData();
+                    formData.append("file", chunk, file.name);
+                    formData.append("username", username);
+                    formData.append("chunk_index", i);
+                    formData.append("total_chunks", totalChunks);
+                    
+                    response = await fetch(`/api/projects/${this.activeProjectId}/upload_chunk`, {
+                        method: "POST",
+                        body: formData
+                    });
+                    
+                    if (!response.ok) break;
+                    progressBar.style.width = `${10 + ((i + 1) / totalChunks) * 80}%`;
+                }
             }
 
             progressBar.style.width = "90%";

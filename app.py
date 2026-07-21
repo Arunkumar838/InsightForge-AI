@@ -184,13 +184,101 @@ async def upload_document(
         
         return {
             "status": "success",
+            "message": f"Successfully parsed {len(df)} rows from document",
             "domain": domain,
             "doc_type": doc_type,
-            "rows": len(dataset_json),
-            "columns": list(df.columns),
             "preview": dataset_json[:10]
         }
         
+    except Exception as e:
+        log_audit(username, "UPLOAD_FAILED", f"Upload failed for {filename}: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/projects/{project_id}/upload_chunk")
+async def upload_document_chunk(
+    project_id: str,
+    username: str = Form(...),
+    chunk_index: int = Form(...),
+    total_chunks: int = Form(...),
+    file: UploadFile = File(...)
+):
+    project = get_project(project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+        
+    contents = await file.read()
+    filename = file.filename
+    
+    # Use deterministic temp directory for chunks
+    temp_dir = os.path.join(tempfile.gettempdir(), f"upload_{project_id}_{filename}")
+    os.makedirs(temp_dir, exist_ok=True)
+    
+    chunk_path = os.path.join(temp_dir, f"chunk_{chunk_index}")
+    with open(chunk_path, "wb") as f:
+        f.write(contents)
+        
+    if chunk_index < total_chunks - 1:
+        return {"status": "chunk_received"}
+        
+    # Assemble chunks
+    assembled_contents = bytearray()
+    for i in range(total_chunks):
+        c_path = os.path.join(temp_dir, f"chunk_{i}")
+        if os.path.exists(c_path):
+            with open(c_path, "rb") as f:
+                assembled_contents.extend(f.read())
+            os.remove(c_path)
+    
+    try:
+        os.rmdir(temp_dir)
+    except Exception:
+        pass
+        
+    ext = os.path.splitext(filename)[1].lower()
+    is_ocr = ext in [".png", ".jpg", ".jpeg", ".tiff", ".bmp"]
+    
+    try:
+        if is_ocr:
+            df, domain, raw_text = await run_in_threadpool(perform_ocr, filename, bytes(assembled_contents))
+            doc_type = "Scanned Image (OCR)"
+        else:
+            df, domain, doc_type, raw_text = await run_in_threadpool(parse_file, filename, bytes(assembled_contents))
+            
+        if df is None or df.empty:
+            raise Exception("No readable tabular structure extracted from document.")
+            
+        if len(df) > 3000:
+            df = df.head(3000).copy()
+            
+        dataset_json = df.to_dict(orient="records")
+        file_metadata = {
+            "filename": filename,
+            "file_size": len(assembled_contents),
+            "doc_type": doc_type,
+            "uploaded_at": datetime.datetime.now().isoformat()
+        }
+        
+        project = add_dataset_version(
+            project_id=project_id,
+            username=username,
+            dataset_json=dataset_json,
+            comment=f"Initial upload of {filename} ({doc_type})",
+            file_metadata=file_metadata
+        )
+        
+        project["domain"] = domain
+        project["doc_type"] = doc_type
+        save_project(project_id, project)
+        
+        log_audit(username, "UPLOAD_FILE", f"Uploaded and structured {filename} under {domain} domain")
+        
+        return {
+            "status": "success",
+            "message": f"Successfully parsed {len(df)} rows from document",
+            "domain": domain,
+            "doc_type": doc_type,
+            "preview": dataset_json[:10]
+        }
     except Exception as e:
         log_audit(username, "UPLOAD_FAILED", f"Upload failed for {filename}: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
