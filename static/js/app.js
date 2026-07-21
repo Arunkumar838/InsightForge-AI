@@ -371,22 +371,51 @@ const App = {
                 progressBar.style.width = "60%";
                 progressLabel.innerText = "Transmitting data in chunks...";
                 
-                const chunkSize = 5000;
-                for (let i = 0; i < rawJson.length; i += chunkSize) {
-                    const chunk = rawJson.slice(i, i + chunkSize);
+                const MAX_PAYLOAD_BYTES = 3.5 * 1024 * 1024; // 3.5MB safety margin
+                let currentChunk = [];
+                let currentChunkBytes = 0;
+                let chunkIndex = 0;
+                
+                for (let i = 0; i < rawJson.length; i++) {
+                    const row = rawJson[i];
+                    const rowBytes = new Blob([JSON.stringify(row)]).size + 2; // +2 for comma and brackets approx
+                    
+                    if (currentChunkBytes + rowBytes > MAX_PAYLOAD_BYTES && currentChunk.length > 0) {
+                        response = await fetch(`/api/projects/${this.activeProjectId}/upload_json`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                filename: file.name,
+                                doc_type: "Excel Spreadsheet",
+                                data: currentChunk,
+                                username: username,
+                                append: chunkIndex > 0
+                            })
+                        });
+                        if (!response.ok) break;
+                        chunkIndex++;
+                        progressBar.style.width = `${60 + (i / rawJson.length) * 30}%`;
+                        
+                        currentChunk = [];
+                        currentChunkBytes = 0;
+                    }
+                    
+                    currentChunk.push(row);
+                    currentChunkBytes += rowBytes;
+                }
+                
+                if (currentChunk.length > 0 && (!response || response.ok)) {
                     response = await fetch(`/api/projects/${this.activeProjectId}/upload_json`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                             filename: file.name,
                             doc_type: "Excel Spreadsheet",
-                            data: chunk,
+                            data: currentChunk,
                             username: username,
-                            append: i > 0
+                            append: chunkIndex > 0
                         })
                     });
-                    if (!response.ok) break;
-                    progressBar.style.width = `${60 + ((i + chunkSize) / rawJson.length) * 30}%`;
                 }
             } else if (fname.endsWith(".csv") || fname.endsWith(".txt")) {
                 progressBar.style.width = "40%";
@@ -399,13 +428,48 @@ const App = {
                 progressBar.style.width = "60%";
                 progressLabel.innerText = "Transmitting CSV in chunks...";
                 
-                const chunkSize = 15000;
-                for (let i = 1; i < lines.length; i += chunkSize) {
-                    const chunkLines = lines.slice(i, i + chunkSize);
-                    if (chunkLines.length === 0 || (chunkLines.length === 1 && chunkLines[0].trim() === "")) continue;
+                const MAX_PAYLOAD_BYTES = 3.5 * 1024 * 1024; // 3.5MB safety margin
+                let currentChunkLines = [];
+                let currentChunkBytes = 0;
+                let chunkIndex = 0;
+                
+                for (let i = 1; i < lines.length; i++) {
+                    const line = lines[i];
+                    if (line.trim() === "") continue;
                     
-                    const chunkText = [headerLine, ...chunkLines].join("\n");
+                    // Approximation of byte size in JS
+                    const lineBytes = new Blob([line]).size;
                     
+                    if (currentChunkBytes + lineBytes > MAX_PAYLOAD_BYTES && currentChunkLines.length > 0) {
+                        // Transmit current chunk
+                        const chunkText = [headerLine, ...currentChunkLines].join("\n");
+                        response = await fetch(`/api/projects/${this.activeProjectId}/upload_json`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                filename: file.name,
+                                doc_type: "CSV Spreadsheet",
+                                text: chunkText,
+                                username: username,
+                                append: chunkIndex > 0
+                            })
+                        });
+                        if (!response.ok) break;
+                        chunkIndex++;
+                        progressBar.style.width = `${60 + (i / lines.length) * 30}%`;
+                        
+                        // Reset chunk
+                        currentChunkLines = [];
+                        currentChunkBytes = 0;
+                    }
+                    
+                    currentChunkLines.push(line);
+                    currentChunkBytes += lineBytes;
+                }
+                
+                // Transmit remaining chunk
+                if (currentChunkLines.length > 0 && (!response || response.ok)) {
+                    const chunkText = [headerLine, ...currentChunkLines].join("\n");
                     response = await fetch(`/api/projects/${this.activeProjectId}/upload_json`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
@@ -414,11 +478,9 @@ const App = {
                             doc_type: "CSV Spreadsheet",
                             text: chunkText,
                             username: username,
-                            append: i > 1
+                            append: chunkIndex > 0
                         })
                     });
-                    if (!response.ok) break;
-                    progressBar.style.width = `${60 + ((i + chunkSize) / lines.length) * 30}%`;
                 }
             } else {
                 // Fallback to FormData upload for images, PDFs, Word docs
