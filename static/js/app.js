@@ -267,11 +267,13 @@ const App = {
     populateParametersSelects() {
         // Target select
         const targetSelect = document.getElementById("ml-target-col");
+        const currentTarget = targetSelect.value;
         targetSelect.innerHTML = "";
         this.numericCols.forEach(col => {
             const opt = document.createElement("option");
             opt.value = col;
             opt.innerText = col;
+            if (col === currentTarget) opt.selected = true;
             targetSelect.appendChild(opt);
         });
         if (this.numericCols.length === 0) {
@@ -283,27 +285,33 @@ const App = {
 
         // Features list checkboxes
         const featCont = document.getElementById("ml-features-container");
+        const checkedFeats = new Set(
+            Array.from(document.querySelectorAll("input[name='ml-feature']:checked")).map(cb => cb.value)
+        );
+        const hasExistingSelection = checkedFeats.size > 0;
+
         featCont.innerHTML = "";
-        
-        // Combine categorical and numeric
         const allFeats = [...this.numericCols, ...this.categoricalCols];
         allFeats.forEach(col => {
+            const isChecked = hasExistingSelection ? checkedFeats.has(col) : true;
             const label = document.createElement("label");
-            label.innerHTML = `<input type="checkbox" name="ml-feature" value="${col}" checked> ${col}`;
+            label.innerHTML = `<input type="checkbox" name="ml-feature" value="${col}" ${isChecked ? 'checked' : ''}> ${col}`;
             featCont.appendChild(label);
         });
         if (allFeats.length === 0) {
             featCont.innerHTML = "<p class='micro-text text-gray' style='padding: 6px;'>No dataset columns found. Please upload a dataset in the Dashboard tab first.</p>";
         }
 
-        // Time series selects
+        // Time series date select
         const dateSelect = document.getElementById("ts-date-col");
+        const currentDate = dateSelect.value;
         dateSelect.innerHTML = "";
         const allDateOptions = [...this.dateCols, ...this.categoricalCols];
         allDateOptions.forEach(col => {
             const opt = document.createElement("option");
             opt.value = col;
             opt.innerText = col;
+            if (col === currentDate) opt.selected = true;
             dateSelect.appendChild(opt);
         });
         if (allDateOptions.length === 0) {
@@ -313,12 +321,15 @@ const App = {
             dateSelect.appendChild(opt);
         }
 
+        // Time series value select
         const valSelect = document.getElementById("ts-value-col");
+        const currentVal = valSelect.value;
         valSelect.innerHTML = "";
         this.numericCols.forEach(col => {
             const opt = document.createElement("option");
             opt.value = col;
             opt.innerText = col;
+            if (col === currentVal) opt.selected = true;
             valSelect.appendChild(opt);
         });
         if (this.numericCols.length === 0) {
@@ -338,22 +349,75 @@ const App = {
         
         uploaderContainer.style.display = "block";
         progressBar.style.width = "10%";
-        progressLabel.innerText = "Transmitting source payload...";
+        progressLabel.innerText = "Processing file payload...";
 
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("username", Auth.currentUser ? Auth.currentUser.username : "admin");
+        const username = Auth.currentUser ? Auth.currentUser.username : "admin";
+        const fname = file.name.toLowerCase();
 
         try {
-            progressBar.style.width = "40%";
-            progressLabel.innerText = "Parsing structural schema...";
+            let response;
+            
+            // Client-side Excel / CSV parsing to bypass Vercel 4.5MB serverless limit for 50MB files
+            if ((fname.endsWith(".xlsx") || fname.endsWith(".xls")) && typeof XLSX !== "undefined") {
+                progressBar.style.width = "40%";
+                progressLabel.innerText = "Parsing Excel workbook client-side...";
+                
+                const arrayBuffer = await file.arrayBuffer();
+                const workbook = XLSX.read(arrayBuffer, { type: "array" });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const rawJson = XLSX.utils.sheet_to_json(worksheet);
+                
+                progressBar.style.width = "70%";
+                progressLabel.innerText = "Structuring rows and schema...";
+                
+                response = await fetch(`/api/projects/${this.activeProjectId}/upload_json`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        filename: file.name,
+                        doc_type: "Excel Spreadsheet",
+                        data: rawJson.slice(0, 3000),
+                        username: username
+                    })
+                });
+            } else if (fname.endsWith(".csv") || fname.endsWith(".txt")) {
+                progressBar.style.width = "40%";
+                progressLabel.innerText = "Reading CSV text stream...";
+                
+                const text = await file.text();
+                // Take first 3000 lines for fast ingestion
+                const sampleLines = text.split(/\r?\n/).slice(0, 3000).join("\n");
+                
+                progressBar.style.width = "70%";
+                progressLabel.innerText = "Transmitting parsed schema...";
+                
+                response = await fetch(`/api/projects/${this.activeProjectId}/upload_json`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        filename: file.name,
+                        doc_type: "CSV Spreadsheet",
+                        text: sampleLines,
+                        username: username
+                    })
+                });
+            } else {
+                // Fallback to FormData upload for images, PDFs, Word docs
+                progressBar.style.width = "40%";
+                progressLabel.innerText = "Transmitting document payload...";
 
-            const response = await fetch(`/api/projects/${this.activeProjectId}/upload`, {
-                method: "POST",
-                body: formData
-            });
+                const formData = new FormData();
+                formData.append("file", file);
+                formData.append("username", username);
 
-            progressBar.style.width = "80%";
+                response = await fetch(`/api/projects/${this.activeProjectId}/upload`, {
+                    method: "POST",
+                    body: formData
+                });
+            }
+
+            progressBar.style.width = "90%";
             progressLabel.innerText = "Assembling virtual columns...";
 
             if (!response.ok) {
@@ -363,10 +427,10 @@ const App = {
                     errDetail = err.detail || errDetail;
                 } catch (jsonErr) {
                     if (response.status === 413) {
-                        errDetail = "File exceeds serverless upload limit (4.5MB). Please upload a smaller CSV/Excel sample under 4.5MB.";
+                        errDetail = "File payload is too large. Please select a file under 50MB.";
                     } else {
-                        const text = await response.text();
-                        errDetail = text ? text.substring(0, 120) : `HTTP ${response.status} Error`;
+                        const rawText = await response.text();
+                        errDetail = rawText ? rawText.substring(0, 120) : `HTTP ${response.status} Error`;
                     }
                 }
                 throw new Error(errDetail);
@@ -539,7 +603,6 @@ const App = {
             // Draw SHAP explainer bars
             this.drawShapBars(results.shap);
             
-            await this.refreshProjectData();
             await this.loadAuditLogs();
 
         } catch (e) {
@@ -624,7 +687,6 @@ const App = {
             // Render forecasting lines
             Charts.renderTSForecast(res.historical, res.forecast, payload.value_col, "chart-ts-forecast");
             
-            await this.refreshProjectData();
             await this.loadAuditLogs();
 
         } catch (e) {
