@@ -368,40 +368,58 @@ const App = {
                 const worksheet = workbook.Sheets[firstSheetName];
                 const rawJson = XLSX.utils.sheet_to_json(worksheet);
                 
-                progressBar.style.width = "70%";
-                progressLabel.innerText = "Structuring rows and schema...";
+                progressBar.style.width = "60%";
+                progressLabel.innerText = "Transmitting data in chunks...";
                 
-                response = await fetch(`/api/projects/${this.activeProjectId}/upload_json`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        filename: file.name,
-                        doc_type: "Excel Spreadsheet",
-                        data: rawJson.slice(0, 3000),
-                        username: username
-                    })
-                });
+                const chunkSize = 5000;
+                for (let i = 0; i < rawJson.length; i += chunkSize) {
+                    const chunk = rawJson.slice(i, i + chunkSize);
+                    response = await fetch(`/api/projects/${this.activeProjectId}/upload_json`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            filename: file.name,
+                            doc_type: "Excel Spreadsheet",
+                            data: chunk,
+                            username: username,
+                            append: i > 0
+                        })
+                    });
+                    if (!response.ok) break;
+                    progressBar.style.width = `${60 + ((i + chunkSize) / rawJson.length) * 30}%`;
+                }
             } else if (fname.endsWith(".csv") || fname.endsWith(".txt")) {
                 progressBar.style.width = "40%";
                 progressLabel.innerText = "Reading CSV text stream...";
                 
                 const text = await file.text();
-                // Take first 3000 lines for fast ingestion
-                const sampleLines = text.split(/\r?\n/).slice(0, 3000).join("\n");
+                const lines = text.split(/\r?\n/);
+                const headerLine = lines[0];
                 
-                progressBar.style.width = "70%";
-                progressLabel.innerText = "Transmitting parsed schema...";
+                progressBar.style.width = "60%";
+                progressLabel.innerText = "Transmitting CSV in chunks...";
                 
-                response = await fetch(`/api/projects/${this.activeProjectId}/upload_json`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        filename: file.name,
-                        doc_type: "CSV Spreadsheet",
-                        text: sampleLines,
-                        username: username
-                    })
-                });
+                const chunkSize = 15000;
+                for (let i = 1; i < lines.length; i += chunkSize) {
+                    const chunkLines = lines.slice(i, i + chunkSize);
+                    if (chunkLines.length === 0 || (chunkLines.length === 1 && chunkLines[0].trim() === "")) continue;
+                    
+                    const chunkText = [headerLine, ...chunkLines].join("\n");
+                    
+                    response = await fetch(`/api/projects/${this.activeProjectId}/upload_json`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            filename: file.name,
+                            doc_type: "CSV Spreadsheet",
+                            text: chunkText,
+                            username: username,
+                            append: i > 1
+                        })
+                    });
+                    if (!response.ok) break;
+                    progressBar.style.width = `${60 + ((i + chunkSize) / lines.length) * 30}%`;
+                }
             } else {
                 // Fallback to FormData upload for images, PDFs, Word docs
                 progressBar.style.width = "40%";

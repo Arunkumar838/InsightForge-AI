@@ -56,6 +56,7 @@ class UploadJsonRequest(BaseModel):
     data: Optional[List[dict]] = None
     text: Optional[str] = None
     username: str = "admin"
+    append: bool = False
 
 class CleanConfigRequest(BaseModel):
     remove_duplicates: bool = True
@@ -212,9 +213,7 @@ def upload_json_data(project_id: str, payload: UploadJsonRequest):
         if df is None or df.empty:
             raise HTTPException(status_code=400, detail="No readable tabular structure found.")
             
-        # Sample dataset if it has over 3,000 rows
-        if len(df) > 3000:
-            df = df.head(3000).copy()
+        # No 3000 row limit, process all uploaded rows from chunk
             
         # Standardize column names as strings
         df.columns = [str(c) for c in df.columns]
@@ -240,13 +239,17 @@ def upload_json_data(project_id: str, payload: UploadJsonRequest):
             "uploaded_at": datetime.datetime.now().isoformat()
         }
         
-        project = add_dataset_version(
-            project_id=project_id,
-            username=payload.username,
-            dataset_json=dataset_json,
-            comment=f"Direct JSON/CSV Ingestion of {payload.filename}",
-            file_metadata=file_metadata
-        )
+        if payload.append and project.get("active_dataset") is not None:
+            project["active_dataset"].extend(dataset_json)
+            save_project(project_id, project)
+        else:
+            project = add_dataset_version(
+                project_id=project_id,
+                username=payload.username,
+                dataset_json=dataset_json,
+                comment=f"Direct JSON/CSV Ingestion of {payload.filename}",
+                file_metadata=file_metadata
+            )
         
         project["domain"] = domain
         project["doc_type"] = payload.doc_type
