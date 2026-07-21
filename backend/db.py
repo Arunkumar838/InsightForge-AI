@@ -122,7 +122,27 @@ def get_project(project_id):
         projects = list_projects()
         project = projects.get(project_id)
         if not project:
-            return None
+            # Auto-create project shell to support stateless serverless environment
+            project = {
+                "id": project_id,
+                "name": f"Session Project {project_id[:8]}",
+                "description": "Auto-recovered session project",
+                "owner": "admin",
+                "created_at": datetime.datetime.now().isoformat(),
+                "updated_at": datetime.datetime.now().isoformat(),
+                "files": [],
+                "datasets": {},
+                "current_version": 0,
+                "active_dataset": [],
+                "domain": "Unknown",
+                "doc_type": "Unknown",
+                "cleaning_history": [],
+                "models": {},
+                "simulator_state": {}
+            }
+            projects[project_id] = project.copy()
+            _write_projects(projects)
+            return project
         
         project = project.copy()
         # Dynamically load the active dataset from its separate file if needed
