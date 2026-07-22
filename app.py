@@ -138,8 +138,8 @@ async def upload_document(
     filename = file.filename
     ext = os.path.splitext(filename)[1].lower()
     
-    # Check if image or scanned document -> OCR
-    is_ocr = ext in [".png", ".jpg", ".jpeg", ".tiff", ".bmp"]
+    IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".tiff", ".bmp", ".webp", ".gif", ".jfif", ".heic", ".heif", ".svg", ".ico", ".avif"]
+    is_ocr = ext in IMAGE_EXTENSIONS
     
     try:
         if is_ocr:
@@ -149,7 +149,8 @@ async def upload_document(
             df, domain, doc_type, raw_text = await run_in_threadpool(parse_file, filename, contents)
             
         if df is None or df.empty:
-            raise Exception("No readable tabular structure extracted from document.")
+            df, domain, raw_text = await run_in_threadpool(perform_ocr, filename, contents)
+            doc_type = "Document Asset (OCR Structured)"
             
         # Sample dataset if it has over 3,000 rows to ensure fast AI prediction and lightweight Vercel payload
         if len(df) > 3000:
@@ -241,7 +242,8 @@ async def upload_document_chunk(
         save_project(project_id, project)
         
         ext = os.path.splitext(filename)[1].lower()
-        is_ocr = ext in [".png", ".jpg", ".jpeg", ".tiff", ".bmp", ".webp"]
+        IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".tiff", ".bmp", ".webp", ".gif", ".jfif", ".heic", ".heif", ".svg", ".ico", ".avif"]
+        is_ocr = ext in IMAGE_EXTENSIONS
         
         if is_ocr:
             df, domain, raw_text = await run_in_threadpool(perform_ocr, filename, bytes(assembled_contents))
@@ -250,7 +252,8 @@ async def upload_document_chunk(
             df, domain, doc_type, raw_text = await run_in_threadpool(parse_file, filename, bytes(assembled_contents))
             
         if df is None or df.empty:
-            raise Exception("No readable tabular structure extracted from document.")
+            df, domain, raw_text = await run_in_threadpool(perform_ocr, filename, bytes(assembled_contents))
+            doc_type = "Document Asset (OCR Structured)"
             
         if len(df) > 3000:
             df = df.head(3000).copy()

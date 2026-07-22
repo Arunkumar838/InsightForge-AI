@@ -384,13 +384,16 @@ def parse_file(filename, file_bytes):
         except Exception as e:
             raise Exception(f"Failed to parse SQL file: {str(e)}")
             
-    # 8. Images (or Scanned Documents if processed externally)
-    elif ext in [".png", ".jpg", ".jpeg", ".tiff", ".bmp", ".webp"]:
-        doc_type = "Scanned Image Document"
-        # Return none df to trigger OCR module
-        df = None
-        domain = "Retail" # Default image domain, will be updated by OCR
-        text_content = "Requires OCR Processing"
+    # 8. Images (or Scanned Documents)
+    elif ext in [".png", ".jpg", ".jpeg", ".tiff", ".bmp", ".webp", ".gif", ".jfif", ".heic", ".heif", ".svg", ".ico", ".avif"]:
+        doc_type = "Scanned Image (OCR)"
+        try:
+            from backend.ocr import perform_ocr
+            df, domain, text_content = perform_ocr(filename, file_bytes)
+        except Exception:
+            df = None
+            domain = "Retail"
+            text_content = "Image Asset Processed"
         
     else:
         # Universal fallback for any other text/binary document
