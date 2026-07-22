@@ -194,6 +194,8 @@ async def upload_document(
         log_audit(username, "UPLOAD_FAILED", f"Upload failed for {filename}: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
 
+import base64
+
 @app.post("/api/projects/{project_id}/upload_chunk")
 async def upload_document_chunk(
     project_id: str,
@@ -202,42 +204,39 @@ async def upload_document_chunk(
     total_chunks: int = Form(...),
     file: UploadFile = File(...)
 ):
-    project = get_project(project_id)
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-        
-    contents = await file.read()
-    filename = file.filename
-    
-    # Use deterministic temp directory for chunks
-    temp_dir = os.path.join(tempfile.gettempdir(), f"upload_{project_id}_{filename}")
-    os.makedirs(temp_dir, exist_ok=True)
-    
-    chunk_path = os.path.join(temp_dir, f"chunk_{chunk_index}")
-    with open(chunk_path, "wb") as f:
-        f.write(contents)
-        
-    if chunk_index < total_chunks - 1:
-        return {"status": "chunk_received"}
-        
-    # Assemble chunks
-    assembled_contents = bytearray()
-    for i in range(total_chunks):
-        c_path = os.path.join(temp_dir, f"chunk_{i}")
-        if os.path.exists(c_path):
-            with open(c_path, "rb") as f:
-                assembled_contents.extend(f.read())
-            os.remove(c_path)
-    
     try:
-        os.rmdir(temp_dir)
-    except Exception:
-        pass
+        project = get_project(project_id)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+            
+        contents = await file.read()
+        filename = file.filename
         
-    ext = os.path.splitext(filename)[1].lower()
-    is_ocr = ext in [".png", ".jpg", ".jpeg", ".tiff", ".bmp"]
-    
-    try:
+        # Persist chunk in project state so it works across stateless serverless instances
+        temp_key = f"_temp_chunk_{filename}"
+        if temp_key not in project:
+            project[temp_key] = {}
+            
+        project[temp_key][str(chunk_index)] = base64.b64encode(contents).decode('utf-8')
+        save_project(project_id, project)
+        
+        if chunk_index < total_chunks - 1:
+            return {"status": "chunk_received"}
+            
+        # Reassemble all chunks 0..total_chunks-1 from persisted project state
+        assembled_contents = bytearray()
+        for i in range(total_chunks):
+            chunk_b64 = project[temp_key].get(str(i))
+            if chunk_b64:
+                assembled_contents.extend(base64.b64decode(chunk_b64))
+                
+        # Clean up temp chunks from project
+        project.pop(temp_key, None)
+        save_project(project_id, project)
+        
+        ext = os.path.splitext(filename)[1].lower()
+        is_ocr = ext in [".png", ".jpg", ".jpeg", ".tiff", ".bmp", ".webp"]
+        
         if is_ocr:
             df, domain, raw_text = await run_in_threadpool(perform_ocr, filename, bytes(assembled_contents))
             doc_type = "Scanned Image (OCR)"
@@ -279,8 +278,10 @@ async def upload_document_chunk(
             "doc_type": doc_type,
             "preview": dataset_json[:10]
         }
+    except HTTPException:
+        raise
     except Exception as e:
-        log_audit(username, "UPLOAD_FAILED", f"Upload failed for {filename}: {str(e)}")
+        log_audit(username, "UPLOAD_FAILED", f"Upload failed for {file.filename if 'file' in locals() else 'file'}: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/projects/{project_id}/upload_json")
@@ -350,7 +351,7 @@ def upload_json_data(project_id: str, payload: UploadJsonRequest):
             "domain": domain,
             "doc_type": payload.doc_type,
             "rows": len(dataset_json),
-            "columns": list(df.columns),
+            "columns": [str(c) for c in df.columns],
             "preview": dataset_json[:10]
         }
     except Exception as e:
