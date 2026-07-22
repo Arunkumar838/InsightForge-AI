@@ -21,16 +21,37 @@ AUDIT_LOGS_FILE = os.path.join(DB_DIR, "audit_logs.json")
 # Reentrant lock to prevent multi-thread write conflicts
 db_lock = threading.RLock()
 
+import math
+import numpy as np
+import pandas as pd
+
 def sanitize_nan(val):
-    if isinstance(val, float):
-        if val != val or val == float('inf') or val == float('-inf'):
+    if val is None:
+        return None
+    try:
+        if pd.isna(val):
             return None
-        return val
+    except Exception:
+        pass
+    if isinstance(val, (float, np.floating)):
+        if math.isnan(val) or math.isinf(val):
+            return None
+        return float(val)
+    elif isinstance(val, (int, np.integer)):
+        return int(val)
+    elif isinstance(val, (bool, np.bool_)):
+        return bool(val)
+    elif isinstance(val, (datetime.datetime, datetime.date, pd.Timestamp)):
+        return val.isoformat()
     elif isinstance(val, dict):
-        return {k: sanitize_nan(v) for k, v in val.items()}
+        return {str(k): sanitize_nan(v) for k, v in val.items()}
     elif isinstance(val, list):
         return [sanitize_nan(x) for x in val]
-    return val
+    else:
+        s = str(val).strip()
+        if s.lower() in ("nan", "none", "null", "nat", "<na>"):
+            return None
+        return s
 
 def ensure_db():
     with db_lock:

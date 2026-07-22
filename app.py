@@ -15,7 +15,7 @@ from backend.db import (
     authenticate_user, verify_api_key, list_projects, get_project,
     create_project, delete_project, add_dataset_version, log_audit, get_audit_logs, save_project
 )
-from backend.parser import parse_file
+from backend.parser import parse_file, clean_dataframe_to_dict
 from backend.ocr import perform_ocr
 from backend.cleaning import clean_dataset
 from backend.ml_models import train_and_predict, forecast_time_series
@@ -155,8 +155,8 @@ async def upload_document(
         if len(df) > 3000:
             df = df.head(3000).copy()
 
-        # Convert df to JSON serializable list
-        dataset_json = df.to_dict(orient="records")
+        # Convert df to JSON serializable list cleanly
+        dataset_json = clean_dataframe_to_dict(df)
         
         # Save file metadata
         file_metadata = {
@@ -250,7 +250,7 @@ async def upload_document_chunk(
         if len(df) > 3000:
             df = df.head(3000).copy()
             
-        dataset_json = df.to_dict(orient="records")
+        dataset_json = clean_dataframe_to_dict(df)
         file_metadata = {
             "filename": filename,
             "file_size": len(assembled_contents),
@@ -318,7 +318,7 @@ def upload_json_data(project_id: str, payload: UploadJsonRequest):
         else:
             domain = "General Operations"
             
-        dataset_json = df.to_dict(orient="records")
+        dataset_json = clean_dataframe_to_dict(df)
         
         file_metadata = {
             "filename": payload.filename,
@@ -374,8 +374,8 @@ def clean_project_data(project_id: str, config: CleanConfigRequest, username: st
     try:
         cleaned_df, report, quality_score = clean_dataset(df, config.dict())
         
-        # Convert to serializable format
-        cleaned_json = cleaned_df.to_dict(orient="records")
+        # Convert to serializable format cleanly
+        cleaned_json = clean_dataframe_to_dict(cleaned_df)
         
         # Update project with new cleaned version
         project = add_dataset_version(

@@ -126,6 +126,74 @@ def parse_sql_dump(sql_text):
         
     return table_data
 
+import numpy as np
+import datetime
+import math
+
+def sanitize_value(v):
+    if v is None:
+        return None
+    
+    # Pandas / Numpy NA / NaT checks
+    try:
+        if pd.isna(v):
+            return None
+    except Exception:
+        pass
+        
+    if isinstance(v, (float, np.floating)):
+        if math.isnan(v) or math.isinf(v):
+            return None
+        return float(v)
+    elif isinstance(v, (int, np.integer)):
+        return int(v)
+    elif isinstance(v, (bool, np.bool_)):
+        return bool(v)
+    elif isinstance(v, (datetime.datetime, datetime.date, pd.Timestamp)):
+        return v.isoformat()
+    elif isinstance(v, (list, tuple)):
+        return [sanitize_value(x) for x in v]
+    elif isinstance(v, dict):
+        return {str(rk): sanitize_value(rv) for rk, rv in v.items()}
+    else:
+        s = str(v).strip()
+        if s.lower() in ("nan", "none", "null", "nat", "<na>"):
+            return None
+        return s
+
+def clean_dataframe_to_dict(df):
+    if df is None or df.empty:
+        return []
+    
+    df = df.copy()
+    
+    # 1. Clean and deduplicate column names
+    cleaned_cols = []
+    seen = {}
+    for i, col in enumerate(df.columns):
+        col_str = str(col).strip() if col is not None else ""
+        if not col_str or col_str.lower().startswith("unnamed:"):
+            col_str = f"Column_{i+1}"
+        if col_str in seen:
+            seen[col_str] += 1
+            col_str = f"{col_str}_{seen[col_str]}"
+        else:
+            seen[col_str] = 1
+        cleaned_cols.append(col_str)
+    
+    df.columns = cleaned_cols
+    
+    # 2. Extract records safely with JSON-compatible types
+    records = []
+    raw_dict = df.to_dict(orient="records")
+    for row in raw_dict:
+        cleaned_row = {}
+        for k, v in row.items():
+            cleaned_row[str(k)] = sanitize_value(v)
+        records.append(cleaned_row)
+        
+    return records
+
 # Master Parser function
 def parse_file(filename, file_bytes):
     ext = os.path.splitext(filename)[1].lower()
@@ -135,31 +203,73 @@ def parse_file(filename, file_bytes):
     text_content = ""
     
     # 1. Excel files
-    if ext in [".xlsx", ".xls"]:
+    if ext in [".xlsx", ".xls", ".xlsm", ".xlsb", ".xltx", ".ods"]:
         doc_type = "Excel Spreadsheet"
         try:
-            df = pd.read_excel(io.BytesIO(file_bytes), nrows=10000)
-            # Convert timestamp columns to ISO format strings for JSON compatibility
-            for col in df.select_dtypes(include=['datetime', 'datetimetz']).columns:
-                df[col] = df[col].dt.strftime('%Y-%m-%d %H:%M:%S')
+            # Try engines sequentially
+            for engine in [None, "openpyxl", "xlrd", "pyxlsb", "odf"]:
+                try:
+                    if engine:
+                        df = pd.read_excel(io.BytesIO(file_bytes), engine=engine, nrows=10000)
+                    else:
+                        df = pd.read_excel(io.BytesIO(file_bytes), nrows=10000)
+                    if df is not None and not df.empty:
+                        break
+                except Exception:
+                    continue
+                    
+            # Direct openpyxl fallback if pandas read_excel failed
+            if df is None or df.empty:
+                try:
+                    import openpyxl
+                    wb = openpyxl.load_workbook(io.BytesIO(file_bytes), data_only=True)
+                    sheet = wb.active
+                    data = list(sheet.values)
+                    if data and len(data) > 1:
+                        header = [str(c) if c is not None else f"Column_{i+1}" for i, c in enumerate(data[0])]
+                        rows = data[1:]
+                        df = pd.DataFrame(rows, columns=header)
+                except Exception:
+                    pass
+                    
+            if df is None or df.empty:
+                raise Exception("No non-empty tables could be read from this Excel file.")
+                
             text_content = df.head(10).to_string()
             domain = detect_domain(text_content, df)
         except Exception as e:
             raise Exception(f"Failed to parse Excel file: {str(e)}")
             
     # 2. CSV files
-    elif ext == ".csv":
+    elif ext in [".csv", ".tsv", ".txt", ".dat", ".log"]:
         doc_type = "Comma Separated Values"
         try:
-            # Try utf-8 first, fallback to latin-1
-            try:
-                df = pd.read_csv(io.BytesIO(file_bytes), encoding="utf-8", nrows=10000)
-            except UnicodeDecodeError:
-                df = pd.read_csv(io.BytesIO(file_bytes), encoding="latin-1", nrows=10000)
+            for enc in ["utf-8", "latin-1", "cp1252", "utf-16"]:
+                try:
+                    for sep in [None, ",", "\t", "|", ";"]:
+                        try:
+                            if sep:
+                                df = pd.read_csv(io.BytesIO(file_bytes), encoding=enc, sep=sep, engine="python", nrows=10000)
+                            else:
+                                df = pd.read_csv(io.BytesIO(file_bytes), encoding=enc, nrows=10000)
+                            if df is not None and not df.empty and len(df.columns) > 0:
+                                break
+                        except Exception:
+                            continue
+                    if df is not None and not df.empty:
+                        break
+                except Exception:
+                    continue
+                    
+            if df is None or df.empty:
+                lines = file_bytes.decode("utf-8", errors="ignore").splitlines()
+                lines = [l.strip() for l in lines if l.strip()]
+                df = pd.DataFrame({"line": range(1, len(lines)+1), "content": lines})
+                
             text_content = df.head(10).to_string()
             domain = detect_domain(text_content, df)
         except Exception as e:
-            raise Exception(f"Failed to parse CSV file: {str(e)}")
+            raise Exception(f"Failed to parse CSV/Text file: {str(e)}")
             
     # 3. JSON files
     elif ext == ".json":
@@ -240,12 +350,12 @@ def parse_file(filename, file_bytes):
         
         # If there's structured text, try to extract tabular data or split text
         lines = [line.strip() for line in text_content.split("\n") if line.strip()]
-        if len(lines) > 5 and "," in lines[0] or "\t" in lines[0] or "  " in lines[0]:
+        if len(lines) > 5 and ("," in lines[0] or "\t" in lines[0] or "  " in lines[0]):
             # Simple text parsing try
             try:
                 from io import StringIO
                 df = pd.read_csv(StringIO(text_content), sep=None, engine='python')
-            except:
+            except Exception:
                 pass
         
         if df is None or df.empty or len(df.columns) <= 1:
@@ -275,7 +385,7 @@ def parse_file(filename, file_bytes):
             raise Exception(f"Failed to parse SQL file: {str(e)}")
             
     # 8. Images (or Scanned Documents if processed externally)
-    elif ext in [".png", ".jpg", ".jpeg", ".tiff", ".bmp"]:
+    elif ext in [".png", ".jpg", ".jpeg", ".tiff", ".bmp", ".webp"]:
         doc_type = "Scanned Image Document"
         # Return none df to trigger OCR module
         df = None
@@ -283,6 +393,26 @@ def parse_file(filename, file_bytes):
         text_content = "Requires OCR Processing"
         
     else:
-        raise Exception(f"Unsupported file type: {ext}")
+        # Universal fallback for any other text/binary document
+        doc_type = f"Document ({ext.upper() if ext else 'DATA'})"
+        try:
+            text_content = file_bytes.decode('utf-8', errors='ignore')
+            lines = [l.strip() for l in text_content.split("\n") if l.strip()]
+            if lines:
+                first_line = lines[0]
+                sep = "," if "," in first_line else ("\t" if "\t" in first_line else ("|" if "|" in first_line else (";" if ";" in first_line else None)))
+                if sep and len(lines) > 1:
+                    try:
+                        df = pd.read_csv(io.StringIO(text_content), sep=sep, nrows=10000)
+                    except Exception:
+                        df = pd.DataFrame({"line": range(1, len(lines)+1), "content": lines})
+                else:
+                    df = pd.DataFrame({"line": range(1, len(lines)+1), "content": lines})
+            else:
+                df = pd.DataFrame({"info": ["File parsed successfully but contains no readable content."]})
+            domain = detect_domain(text_content[:2000], df)
+        except Exception:
+            df = pd.DataFrame({"info": [f"Raw file asset loaded ({len(file_bytes)} bytes)."]})
+            domain = "General Business"
         
     return df, domain, doc_type, text_content

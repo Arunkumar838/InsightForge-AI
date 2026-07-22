@@ -5,6 +5,7 @@ numpy
 scikit-learn
 python-multipart
 openpyxl
+xlrd
 python-docx
 python-pptx
 reportlab
