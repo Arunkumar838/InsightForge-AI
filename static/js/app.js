@@ -340,6 +340,32 @@ const App = {
         }
     },
 
+    async safeFetch(url, options) {
+        try {
+            const res = await fetch(url, options);
+            const text = await res.text();
+            let json = null;
+            try {
+                json = JSON.parse(text);
+            } catch (e) {}
+            return {
+                ok: res.ok,
+                status: res.status,
+                text: text,
+                json: json,
+                detail: json ? (json.detail || null) : null
+            };
+        } catch (err) {
+            return {
+                ok: false,
+                status: 0,
+                text: err.message,
+                json: null,
+                detail: err.message
+            };
+        }
+    },
+
     async uploadFile(file) {
         if (!this.activeProjectId) return;
 
@@ -355,7 +381,7 @@ const App = {
         const fname = file.name.toLowerCase();
 
         try {
-            let response = null;
+            let resObj = null;
             let uploadSuccess = false;
             
             // Tier 1: Client-side Excel parsing if SheetJS is available
@@ -385,7 +411,7 @@ const App = {
                                 const rowBytes = new Blob([JSON.stringify(row)]).size + 2;
                                 
                                 if (currentChunkBytes + rowBytes > MAX_PAYLOAD_BYTES && currentChunk.length > 0) {
-                                    response = await fetch(`/api/projects/${this.activeProjectId}/upload_json`, {
+                                    resObj = await this.safeFetch(`/api/projects/${this.activeProjectId}/upload_json`, {
                                         method: "POST",
                                         headers: { "Content-Type": "application/json" },
                                         body: JSON.stringify({
@@ -396,7 +422,7 @@ const App = {
                                             append: chunkIndex > 0
                                         })
                                     });
-                                    if (!response.ok) break;
+                                    if (!resObj.ok) break;
                                     chunkIndex++;
                                     progressBar.style.width = `${60 + (i / rawJson.length) * 30}%`;
                                     currentChunk = [];
@@ -407,8 +433,8 @@ const App = {
                                 currentChunkBytes += rowBytes;
                             }
                             
-                            if (currentChunk.length > 0 && (!response || response.ok)) {
-                                response = await fetch(`/api/projects/${this.activeProjectId}/upload_json`, {
+                            if (currentChunk.length > 0 && (!resObj || resObj.ok)) {
+                                resObj = await this.safeFetch(`/api/projects/${this.activeProjectId}/upload_json`, {
                                     method: "POST",
                                     headers: { "Content-Type": "application/json" },
                                     body: JSON.stringify({
@@ -420,7 +446,7 @@ const App = {
                                     })
                                 });
                             }
-                            if (response && response.ok) {
+                            if (resObj && resObj.ok) {
                                 uploadSuccess = true;
                             }
                         }
@@ -456,7 +482,7 @@ const App = {
                             
                             if (currentChunkBytes + lineBytes > MAX_PAYLOAD_BYTES && currentChunkLines.length > 0) {
                                 const chunkText = [headerLine, ...currentChunkLines].join("\n");
-                                response = await fetch(`/api/projects/${this.activeProjectId}/upload_json`, {
+                                resObj = await this.safeFetch(`/api/projects/${this.activeProjectId}/upload_json`, {
                                     method: "POST",
                                     headers: { "Content-Type": "application/json" },
                                     body: JSON.stringify({
@@ -467,7 +493,7 @@ const App = {
                                         append: chunkIndex > 0
                                     })
                                 });
-                                if (!response.ok) break;
+                                if (!resObj.ok) break;
                                 chunkIndex++;
                                 progressBar.style.width = `${60 + (i / lines.length) * 30}%`;
                                 currentChunkLines = [];
@@ -478,9 +504,9 @@ const App = {
                             currentChunkBytes += lineBytes;
                         }
                         
-                        if (currentChunkLines.length > 0 && (!response || response.ok)) {
+                        if (currentChunkLines.length > 0 && (!resObj || resObj.ok)) {
                             const chunkText = [headerLine, ...currentChunkLines].join("\n");
-                            response = await fetch(`/api/projects/${this.activeProjectId}/upload_json`, {
+                            resObj = await this.safeFetch(`/api/projects/${this.activeProjectId}/upload_json`, {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({
@@ -492,7 +518,7 @@ const App = {
                                 })
                             });
                         }
-                        if (response && response.ok) {
+                        if (resObj && resObj.ok) {
                             uploadSuccess = true;
                         }
                     }
@@ -517,12 +543,12 @@ const App = {
                     formData.append("chunk_index", i);
                     formData.append("total_chunks", totalChunks);
                     
-                    response = await fetch(`/api/projects/${this.activeProjectId}/upload_chunk`, {
+                    resObj = await this.safeFetch(`/api/projects/${this.activeProjectId}/upload_chunk`, {
                         method: "POST",
                         body: formData
                     });
                     
-                    if (!response.ok) break;
+                    if (!resObj.ok) break;
                     progressBar.style.width = `${20 + ((i + 1) / totalChunks) * 70}%`;
                 }
             }
@@ -530,33 +556,21 @@ const App = {
             progressBar.style.width = "90%";
             progressLabel.innerText = "Assembling virtual columns...";
 
-            if (!response || !response.ok) {
+            if (!resObj || !resObj.ok) {
                 let errDetail = "Parse Failed";
-                if (response) {
-                    try {
-                        const rawText = await response.text();
-                        try {
-                            const err = JSON.parse(rawText);
-                            errDetail = err.detail || errDetail;
-                        } catch (jErr) {
-                            if (response.status === 413) {
-                                errDetail = "File payload is too large. Please select a file under 50MB.";
-                            } else {
-                                errDetail = rawText ? rawText.substring(0, 120) : `HTTP ${response.status} Error`;
-                            }
-                        }
-                    } catch (readErr) {
-                        errDetail = `HTTP ${response.status} Error`;
+                if (resObj) {
+                    if (resObj.detail) {
+                        errDetail = resObj.detail;
+                    } else if (resObj.status === 413) {
+                        errDetail = "File payload is too large. Please select a file under 50MB.";
+                    } else if (resObj.text) {
+                        errDetail = resObj.text.substring(0, 120);
+                    } else {
+                        errDetail = `HTTP ${resObj.status} Error`;
                     }
                 }
                 throw new Error(errDetail);
             }
-
-            let res = {};
-            try {
-                const resText = await response.text();
-                res = JSON.parse(resText);
-            } catch (e) {}
             
             progressBar.style.width = "100%";
             progressLabel.innerText = "Success! Forge operational.";
