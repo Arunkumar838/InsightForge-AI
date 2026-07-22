@@ -10,9 +10,9 @@ import tempfile
 IS_VERCEL = os.environ.get("VERCEL") == "1" or os.environ.get("VERCEL_ENV") is not None
 
 if IS_VERCEL:
-    DB_DIR = os.path.join(tempfile.gettempdir(), ".insightforge_db")
+    DB_DIR = os.path.join(tempfile.gettempdir(), ".d2d_db")
 else:
-    DB_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".insightforge_db")
+    DB_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".d2d_db")
 
 USERS_FILE = os.path.join(DB_DIR, "users.json")
 PROJECTS_FILE = os.path.join(DB_DIR, "projects.json")

@@ -6,7 +6,7 @@ import webbrowser
 
 def main():
     print("==================================================")
-    print("      INSIGHTFORGE AI - QUANTUM LOCAL LAUNCHER    ")
+    print("      D2D - QUANTUM LOCAL LAUNCHER               ")
     print("==================================================")
     
     # 1. Install/Update requirements

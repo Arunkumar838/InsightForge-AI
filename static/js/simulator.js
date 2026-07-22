@@ -1,4 +1,4 @@
-// Simulator Manager for InsightForge AI
+// Simulator Manager for D2D
 const Simulator = {
     projectId: null,
     targetCol: null,

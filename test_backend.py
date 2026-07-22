@@ -11,7 +11,7 @@ from backend.agents import MultiAgentManager
 
 def run_tests():
     print("--------------------------------------------------")
-    print("          INSIGHTFORGE TEST SUITE START           ")
+    print("             D2D TEST SUITE START                 ")
     print("--------------------------------------------------")
     
     # 1. Test Database Operations
@@ -125,7 +125,7 @@ def run_tests():
     print(">> Multi-Agent Console: PASS")
 
     print("\n--------------------------------------------------")
-    print("          INSIGHTFORGE TEST SUITE PASSED          ")
+    print("             D2D TEST SUITE PASSED                ")
     print("--------------------------------------------------")
 
 if __name__ == "__main__":

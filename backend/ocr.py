@@ -35,7 +35,7 @@ def perform_ocr(filename, file_bytes):
         # Generate a simulated OCR table of retail transactions
         text_lines = [
             "=================== INVOICE DETAILS ===================",
-            "Store: InsightForge HyperMarket #401",
+            "Store: D2D HyperMarket #401",
             "Address: 42 Ocean Breeze Blvd, Tech City",
             f"Date: {(datetime.datetime.now() - datetime.timedelta(days=random.randint(1, 30))).strftime('%Y-%m-%d')}",
             "Terminal: POS-09 | Operator: Sarah Connor",
@@ -86,7 +86,7 @@ def perform_ocr(filename, file_bytes):
     elif domain == "Finance":
         text_lines = [
             "================= BALANCE SHEET STATEMENTS =================",
-            "Entity: InsightForge Holdings Inc.",
+            "Entity: D2D Holdings Inc.",
             "Period Ending: December 31, 2025",
             "Currency: USD ($)",
             "-----------------------------------------------------------",

@@ -1,4 +1,4 @@
-// Chart Manager for InsightForge AI
+// Chart Manager for D2D
 const Charts = {
     instances: {},
 

@@ -1,8 +1,8 @@
 @echo off
-title InsightForge AI Dashboard
+title D2D Dashboard
 cd /d "%~dp0"
 echo ===================================================
-echo   Starting InsightForge AI Server...
+echo   Starting D2D Server...
 echo   Dashboard URL: http://127.0.0.1:8000
 echo ===================================================
 timeout /t 2 >nul

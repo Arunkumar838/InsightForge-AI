@@ -1,4 +1,4 @@
-// Master Application Manager for InsightForge AI
+// Master Application Manager for D2D
 const App = {
     activeProjectId: null,
     projectData: null,
