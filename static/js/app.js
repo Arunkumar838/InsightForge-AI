@@ -534,21 +534,29 @@ const App = {
                 let errDetail = "Parse Failed";
                 if (response) {
                     try {
-                        const err = await response.json();
-                        errDetail = err.detail || errDetail;
-                    } catch (jsonErr) {
-                        if (response.status === 413) {
-                            errDetail = "File payload is too large. Please select a file under 50MB.";
-                        } else {
-                            const rawText = await response.text();
-                            errDetail = rawText ? rawText.substring(0, 120) : `HTTP ${response.status} Error`;
+                        const rawText = await response.text();
+                        try {
+                            const err = JSON.parse(rawText);
+                            errDetail = err.detail || errDetail;
+                        } catch (jErr) {
+                            if (response.status === 413) {
+                                errDetail = "File payload is too large. Please select a file under 50MB.";
+                            } else {
+                                errDetail = rawText ? rawText.substring(0, 120) : `HTTP ${response.status} Error`;
+                            }
                         }
+                    } catch (readErr) {
+                        errDetail = `HTTP ${response.status} Error`;
                     }
                 }
                 throw new Error(errDetail);
             }
 
-            const res = await response.json();
+            let res = {};
+            try {
+                const resText = await response.text();
+                res = JSON.parse(resText);
+            } catch (e) {}
             
             progressBar.style.width = "100%";
             progressLabel.innerText = "Success! Forge operational.";
