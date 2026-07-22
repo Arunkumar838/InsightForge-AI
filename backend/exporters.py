@@ -126,7 +126,7 @@ def export_powerpoint(project_name, domain, dataset_summary, ml_results=None):
     title = slide1.shapes.title
     subtitle = slide1.placeholders[1]
     
-    title.text = "D2D"
+    title.text = "INSIGHTFORGE AI"
     title.text_frame.paragraphs[0].font.name = "Arial"
     title.text_frame.paragraphs[0].font.size = Pt(44)
     title.text_frame.paragraphs[0].font.bold = True
@@ -308,7 +308,7 @@ def export_pdf(project_name, domain, dataset_summary, cleaning_report, audit_log
     )
     
     # Document Header
-    story.append(Paragraph("D2D - ANALYTICAL REPORT", title_style))
+    story.append(Paragraph("INSIGHTFORGE AI - ANALYTICAL REPORT", title_style))
     story.append(Paragraph(f"<b>Project Name:</b> {project_name} | <b>Business Domain:</b> {domain}", body_style))
     story.append(Paragraph(f"<b>Date Generated:</b> {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", body_style))
     story.append(Spacer(1, 10))

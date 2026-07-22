@@ -1,4 +1,4 @@
-// Auth Manager for D2D
+// Auth Manager for InsightForge AI
 const Auth = {
     currentUser: null,
 

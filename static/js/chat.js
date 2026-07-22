@@ -1,4 +1,4 @@
-// Chat Manager for D2D
+// Chat Manager for InsightForge AI
 const Chat = {
     projectId: null,
     activeAgent: "document",

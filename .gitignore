@@ -4,7 +4,6 @@ __pycache__/
 
 # Local database and datasets
 .insightforge_db/
-.d2d_db/
 
 # Logs and scratch files
 server.log

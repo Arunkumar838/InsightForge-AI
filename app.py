@@ -22,7 +22,7 @@ from backend.ml_models import train_and_predict, forecast_time_series
 from backend.agents import MultiAgentManager
 from backend.exporters import export_excel, export_powerpoint, export_pdf
 
-app = FastAPI(title="D2D API", version="2.0.0")
+app = FastAPI(title="InsightForge AI API", version="2.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -97,7 +97,7 @@ def login(req: LoginRequest):
     user = authenticate_user(req.username, req.password)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid username or password")
-    log_audit(req.username, "LOGIN", "Logged into D2D console")
+    log_audit(req.username, "LOGIN", "Logged into InsightForge AI console")
     return user
 
 # ----------------- Project endpoints -----------------
@@ -623,7 +623,7 @@ def get_excel_report(project_id: str):
     return Response(
         content=excel_bytes,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f"attachment; filename=D2D_Cleaned_{project_id[:6]}.xlsx"}
+        headers={"Content-Disposition": f"attachment; filename=InsightForge_Cleaned_{project_id[:6]}.xlsx"}
     )
 
 @app.get("/api/projects/{project_id}/export/pptx")
@@ -660,7 +660,7 @@ def get_pptx_report(project_id: str):
     return Response(
         content=ppt_bytes,
         media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        headers={"Content-Disposition": f"attachment; filename=D2D_Briefing_{project_id[:6]}.pptx"}
+        headers={"Content-Disposition": f"attachment; filename=InsightForge_Briefing_{project_id[:6]}.pptx"}
     )
 
 @app.get("/api/projects/{project_id}/export/pdf")
@@ -690,7 +690,7 @@ def get_pdf_report(project_id: str):
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=D2D_ExecutiveReport_{project_id[:6]}.pdf"}
+        headers={"Content-Disposition": f"attachment; filename=InsightForge_ExecutiveReport_{project_id[:6]}.pdf"}
     )
 
 @app.get("/api/audit")
