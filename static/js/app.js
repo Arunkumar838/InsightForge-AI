@@ -387,7 +387,7 @@ const App = {
             // Tier 1: Client-side Excel parsing if SheetJS is available
             if ((fname.endsWith(".xlsx") || fname.endsWith(".xls") || fname.endsWith(".xlsm") || fname.endsWith(".ods")) && typeof XLSX !== "undefined") {
                 try {
-                    progressBar.style.width = "30%";
+                    progressBar.style.width = "40%";
                     progressLabel.innerText = "Parsing Excel workbook...";
                     
                     const arrayBuffer = await file.arrayBuffer();
@@ -395,57 +395,27 @@ const App = {
                     if (workbook && workbook.SheetNames && workbook.SheetNames.length > 0) {
                         const firstSheetName = workbook.SheetNames[0];
                         const worksheet = workbook.Sheets[firstSheetName];
-                        const rawJson = XLSX.utils.sheet_to_json(worksheet);
+                        let rawJson = XLSX.utils.sheet_to_json(worksheet);
                         
                         if (rawJson && rawJson.length > 0) {
-                            progressBar.style.width = "60%";
-                            progressLabel.innerText = "Transmitting Excel data...";
-                            
-                            const MAX_PAYLOAD_BYTES = 3.5 * 1024 * 1024;
-                            let currentChunk = [];
-                            let currentChunkBytes = 0;
-                            let chunkIndex = 0;
-                            
-                            for (let i = 0; i < rawJson.length; i++) {
-                                const row = rawJson[i];
-                                const rowBytes = new Blob([JSON.stringify(row)]).size + 2;
-                                
-                                if (currentChunkBytes + rowBytes > MAX_PAYLOAD_BYTES && currentChunk.length > 0) {
-                                    resObj = await this.safeFetch(`/api/projects/${this.activeProjectId}/upload_json`, {
-                                        method: "POST",
-                                        headers: { "Content-Type": "application/json" },
-                                        body: JSON.stringify({
-                                            filename: file.name,
-                                            doc_type: "Excel Spreadsheet",
-                                            data: currentChunk,
-                                            username: username,
-                                            append: chunkIndex > 0
-                                        })
-                                    });
-                                    if (!resObj.ok) break;
-                                    chunkIndex++;
-                                    progressBar.style.width = `${60 + (i / rawJson.length) * 30}%`;
-                                    currentChunk = [];
-                                    currentChunkBytes = 0;
-                                }
-                                
-                                currentChunk.push(row);
-                                currentChunkBytes += rowBytes;
+                            if (rawJson.length > 5000) {
+                                rawJson = rawJson.slice(0, 5000);
                             }
                             
-                            if (currentChunk.length > 0 && (!resObj || resObj.ok)) {
-                                resObj = await this.safeFetch(`/api/projects/${this.activeProjectId}/upload_json`, {
-                                    method: "POST",
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({
-                                        filename: file.name,
-                                        doc_type: "Excel Spreadsheet",
-                                        data: currentChunk,
-                                        username: username,
-                                        append: chunkIndex > 0
-                                    })
-                                });
-                            }
+                            progressBar.style.width = "70%";
+                            progressLabel.innerText = "Ingesting structured dataset...";
+                            
+                            resObj = await this.safeFetch(`/api/projects/${this.activeProjectId}/upload_json`, {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                    filename: file.name,
+                                    doc_type: "Excel Spreadsheet",
+                                    data: rawJson,
+                                    username: username
+                                })
+                            });
+                            
                             if (resObj && resObj.ok) {
                                 uploadSuccess = true;
                             }
@@ -457,67 +427,30 @@ const App = {
             }
 
             // Tier 2: Client-side CSV parsing if not handled
-            if (!uploadSuccess && (fname.endsWith(".csv") || fname.endsWith(".txt") || fname.endsWith(".tsv"))) {
+            if (!uploadSuccess && (fname.endsWith(".csv") || fname.endsWith(".txt") || fname.endsWith(".tsv") || fname.endsWith(".dat") || fname.endsWith(".log"))) {
                 try {
-                    progressBar.style.width = "30%";
-                    progressLabel.innerText = "Reading CSV stream...";
+                    progressBar.style.width = "40%";
+                    progressLabel.innerText = "Reading data stream...";
                     
                     const text = await file.text();
                     const lines = text.split(/\r?\n/);
                     if (lines.length > 0 && lines[0].trim() !== "") {
-                        const headerLine = lines[0];
-                        progressBar.style.width = "60%";
-                        progressLabel.innerText = "Transmitting CSV data...";
+                        const sampleLines = lines.slice(0, 5000).join("\n");
                         
-                        const MAX_PAYLOAD_BYTES = 3.5 * 1024 * 1024;
-                        let currentChunkLines = [];
-                        let currentChunkBytes = 0;
-                        let chunkIndex = 0;
+                        progressBar.style.width = "70%";
+                        progressLabel.innerText = "Ingesting CSV dataset...";
                         
-                        for (let i = 1; i < lines.length; i++) {
-                            const line = lines[i];
-                            if (line.trim() === "") continue;
-                            
-                            const lineBytes = new Blob([line]).size;
-                            
-                            if (currentChunkBytes + lineBytes > MAX_PAYLOAD_BYTES && currentChunkLines.length > 0) {
-                                const chunkText = [headerLine, ...currentChunkLines].join("\n");
-                                resObj = await this.safeFetch(`/api/projects/${this.activeProjectId}/upload_json`, {
-                                    method: "POST",
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({
-                                        filename: file.name,
-                                        doc_type: "CSV Spreadsheet",
-                                        text: chunkText,
-                                        username: username,
-                                        append: chunkIndex > 0
-                                    })
-                                });
-                                if (!resObj.ok) break;
-                                chunkIndex++;
-                                progressBar.style.width = `${60 + (i / lines.length) * 30}%`;
-                                currentChunkLines = [];
-                                currentChunkBytes = 0;
-                            }
-                            
-                            currentChunkLines.push(line);
-                            currentChunkBytes += lineBytes;
-                        }
+                        resObj = await this.safeFetch(`/api/projects/${this.activeProjectId}/upload_json`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                filename: file.name,
+                                doc_type: "CSV Spreadsheet",
+                                text: sampleLines,
+                                username: username
+                            })
+                        });
                         
-                        if (currentChunkLines.length > 0 && (!resObj || resObj.ok)) {
-                            const chunkText = [headerLine, ...currentChunkLines].join("\n");
-                            resObj = await this.safeFetch(`/api/projects/${this.activeProjectId}/upload_json`, {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({
-                                    filename: file.name,
-                                    doc_type: "CSV Spreadsheet",
-                                    text: chunkText,
-                                    username: username,
-                                    append: chunkIndex > 0
-                                })
-                            });
-                        }
                         if (resObj && resObj.ok) {
                             uploadSuccess = true;
                         }
@@ -527,30 +460,19 @@ const App = {
                 }
             }
 
-            // Tier 3: Universal Chunked Binary Upload to Python Server (Handles Excel, CSV, PDF, Docx, SQL, Images, etc.)
+            // Tier 3: Single Direct Binary Upload for ALL other file types (or if client parsing was skipped/failed)
             if (!uploadSuccess) {
-                progressBar.style.width = "20%";
-                progressLabel.innerText = "Transmitting file to analytical engine...";
+                progressBar.style.width = "40%";
+                progressLabel.innerText = "Transmitting file payload to analytical engine...";
                 
-                const chunkSize = 3.5 * 1024 * 1024; // 3.5MB per chunk
-                const totalChunks = Math.ceil(file.size / chunkSize);
+                const formData = new FormData();
+                formData.append("file", file);
+                formData.append("username", username);
                 
-                for (let i = 0; i < totalChunks; i++) {
-                    const chunk = file.slice(i * chunkSize, (i + 1) * chunkSize);
-                    const formData = new FormData();
-                    formData.append("file", chunk, file.name);
-                    formData.append("username", username);
-                    formData.append("chunk_index", i);
-                    formData.append("total_chunks", totalChunks);
-                    
-                    resObj = await this.safeFetch(`/api/projects/${this.activeProjectId}/upload_chunk`, {
-                        method: "POST",
-                        body: formData
-                    });
-                    
-                    if (!resObj.ok) break;
-                    progressBar.style.width = `${20 + ((i + 1) / totalChunks) * 70}%`;
-                }
+                resObj = await this.safeFetch(`/api/projects/${this.activeProjectId}/upload`, {
+                    method: "POST",
+                    body: formData
+                });
             }
 
             progressBar.style.width = "90%";

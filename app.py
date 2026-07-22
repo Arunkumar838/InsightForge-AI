@@ -190,9 +190,15 @@ async def upload_document(
             "preview": dataset_json[:10]
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
-        log_audit(username, "UPLOAD_FAILED", f"Upload failed for {filename}: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
+        err_msg = str(e)
+        try:
+            log_audit(username, "UPLOAD_FAILED", f"Upload failed for {filename if 'filename' in locals() else 'file'}: {err_msg}")
+        except Exception:
+            pass
+        raise HTTPException(status_code=400, detail=err_msg)
 
 import base64
 
